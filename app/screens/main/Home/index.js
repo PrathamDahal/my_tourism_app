@@ -59,7 +59,7 @@ const Home = ({ navigation }) => {
           >
             <Ionicons name="search" size={20} color="#666" />
             <Text style={styles.searchText}>
-              Where do you want to go today?
+              Where do you want to go today? Huh?
             </Text>
           </TouchableOpacity>
 
