@@ -1,17 +1,28 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Button } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Button, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const MyCart = ({ navigation }) => {
   const [cartItems, setCartItems] = useState([
-    { id: '1', name: 'Local Handicraft', price: 25.99, quantity: 1 },
-    { id: '2', name: 'Organic Coffee', price: 12.50, quantity: 2 },
-    { id: '3', name: 'Traditional Shawl', price: 35.00, quantity: 1 },
+    { id: '1', name: 'Local Handicraft', price: 25.99, quantity: 1, stock: 3 },
+    { id: '2', name: 'Organic Coffee', price: 12.50, quantity: 2, stock: 5 },
+    { id: '3', name: 'Traditional Shawl', price: 35.00, quantity: 1, stock: 1 },
   ]);
+  const [errorMessage, setErrorMessage] = useState(null);
 
   const updateQuantity = (id, newQuantity) => {
+    const product = cartItems.find(item => item.id === id);
+    if (!product) return;
+
     if (newQuantity < 1) return;
-    setCartItems(cartItems.map(item => 
+
+    if (product.stock && newQuantity > product.stock) {
+      setErrorMessage(`Cannot add more than available stock (${product.stock})`);
+      setTimeout(() => setErrorMessage(null), 3000);
+      return;
+    }
+
+    setCartItems(cartItems.map(item =>
       item.id === id ? { ...item, quantity: newQuantity } : item
     ));
   };
@@ -21,63 +32,69 @@ const MyCart = ({ navigation }) => {
   };
 
   const calculateTotal = () => {
-    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0).toFixed(2);
+    return cartItems
+      .reduce((total, item) => total + (item.price * item.quantity), 0)
+      .toFixed(2);
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>My Cart</Text>
-      
+
+      {errorMessage && (
+        <View style={styles.errorToast}>
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        </View>
+      )}
+
       {cartItems.length === 0 ? (
         <View style={styles.emptyCart}>
           <Ionicons name="cart-outline" size={64} color="#ccc" />
           <Text style={styles.emptyText}>Your cart is empty</Text>
-          <Button 
-            title="Browse Products" 
+          <Button
+            title="Browse Products"
             onPress={() => navigation.navigate('LocalProducts')}
             color="#841584"
           />
         </View>
       ) : (
         <>
-          <FlatList
-            data={cartItems}
-            keyExtractor={item => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.cartItem}>
+          <ScrollView>
+            {cartItems.map(item => (
+              <View key={item.id} style={styles.cartItem}>
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemName}>{item.name}</Text>
                   <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
                 </View>
                 <View style={styles.quantityContainer}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => updateQuantity(item.id, item.quantity - 1)}
                     style={styles.quantityButton}
                   >
                     <Ionicons name="remove" size={20} color="#841584" />
                   </TouchableOpacity>
                   <Text style={styles.quantity}>{item.quantity}</Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => updateQuantity(item.id, item.quantity + 1)}
                     style={styles.quantityButton}
                   >
                     <Ionicons name="add" size={20} color="#841584" />
                   </TouchableOpacity>
                 </View>
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => removeItem(item.id)}
                   style={styles.removeButton}
                 >
                   <Ionicons name="trash-outline" size={20} color="#ff4444" />
                 </TouchableOpacity>
               </View>
-            )}
-          />
-          
+            ))}
+          </ScrollView>
+
           <View style={styles.totalContainer}>
             <Text style={styles.totalText}>Total: ${calculateTotal()}</Text>
-            <Button 
-              title="Proceed to Checkout" 
+            <Button
+              title="Proceed to Checkout"
               onPress={() => Alert.alert('Checkout', 'Proceeding to payment')}
               color="#841584"
             />
@@ -109,6 +126,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#666',
     marginVertical: 20,
+  },
+  errorToast: {
+    backgroundColor: '#fee2e2',
+    padding: 10,
+    borderRadius: 6,
+    marginBottom: 10,
+  },
+  errorText: {
+    color: '#b91c1c',
+    textAlign: 'center',
   },
   cartItem: {
     flexDirection: 'row',

@@ -8,7 +8,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/T-App-icon.png",
+      "image": "./assets/T-App-Splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },

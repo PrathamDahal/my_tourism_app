@@ -36,24 +36,18 @@ const FilterComponent = ({
   const minPrice = Math.min(...products.map((p) => p.price));
   const maxPrice = Math.max(...products.map((p) => p.price));
 
-  const cleanTags = (tags) => {
-    if (Array.isArray(tags)) return tags;
-    return tags
-      .replace(/[\]"]+/g, '')
-      .split(',')
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0);
-  };
+  // Initialize price range if not set
+  const [priceRange, setPriceRange] = useState([minPrice, maxPrice]);
 
   return (
     <ScrollView style={styles.container}>
-      {/* Categories */}
+      {/* Categories Section */}
       <View style={styles.section}>
         <TouchableOpacity
           onPress={() => toggleSection('categories')}
           style={styles.sectionHeader}
         >
-          <Text style={styles.sectionTitle}>All Categories</Text>
+          <Text style={styles.sectionTitle}>Categories</Text>
           <MaterialIcons
             name="keyboard-arrow-down"
             size={24}
@@ -71,14 +65,13 @@ const FilterComponent = ({
                 onPress={() =>
                   setFilters((prev) => ({
                     ...prev,
-                    selectedSubCategories:
-                      prev.selectedSubCategories.includes(subcat) ? [] : [subcat],
+                    subcategory: prev.subcategory === subcat ? '' : subcat,
                   }))
                 }
               >
                 <MaterialCommunityIcons
                   name={
-                    filters.selectedSubCategories.includes(subcat)
+                    filters.subcategory === subcat
                       ? 'radiobox-marked'
                       : 'radiobox-blank'
                   }
@@ -86,20 +79,19 @@ const FilterComponent = ({
                   color="#e53935"
                 />
                 <Text style={styles.radioLabel}>{subcat}</Text>
-                <Text style={styles.radioCount}>(154)</Text>
               </TouchableOpacity>
             ))}
           </View>
         )}
       </View>
 
-      {/* Price Range */}
+      {/* Price Range Section */}
       <View style={styles.section}>
         <TouchableOpacity
           onPress={() => toggleSection('priceRange')}
           style={styles.sectionHeader}
         >
-          <Text style={styles.sectionTitle}>Price</Text>
+          <Text style={styles.sectionTitle}>Price Range</Text>
           <MaterialIcons
             name="keyboard-arrow-down"
             size={24}
@@ -114,11 +106,12 @@ const FilterComponent = ({
               minimumValue={minPrice}
               maximumValue={maxPrice}
               step={1}
-              value={filters.priceRange[1]}
-              onValueChange={(value) =>
-                setFilters((prev) => ({
+              value={priceRange[1]}
+              onValueChange={(value) => setPriceRange([minPrice, value])}
+              onSlidingComplete={(value) => 
+                setFilters(prev => ({
                   ...prev,
-                  priceRange: [minPrice, value],
+                  priceRange: [minPrice, value]
                 }))
               }
               minimumTrackTintColor="#1e90ff"
@@ -126,21 +119,20 @@ const FilterComponent = ({
               thumbTintColor="#1e90ff"
             />
             <View style={styles.priceRangeLabels}>
-              <Text style={styles.priceLabel}>Price: ${minPrice}</Text>
-              <Text style={styles.priceLabel}>To</Text>
-              <Text style={styles.priceLabel}>${filters.priceRange[1]}</Text>
+              <Text style={styles.priceLabel}>${minPrice}</Text>
+              <Text style={styles.priceLabel}>${priceRange[1]}</Text>
             </View>
           </View>
         )}
       </View>
 
-      {/* Rating */}
+      {/* Rating Section */}
       <View style={styles.section}>
         <TouchableOpacity
           onPress={() => toggleSection('rating')}
           style={styles.sectionHeader}
         >
-          <Text style={styles.sectionTitle}>Rating</Text>
+          <Text style={styles.sectionTitle}>Minimum Rating</Text>
           <MaterialIcons
             name="keyboard-arrow-down"
             size={24}
@@ -188,13 +180,13 @@ const FilterComponent = ({
         )}
       </View>
 
-      {/* Tags */}
+      {/* Tags Section */}
       <View style={styles.section}>
         <TouchableOpacity
           onPress={() => toggleSection('tags')}
           style={styles.sectionHeader}
         >
-          <Text style={styles.sectionTitle}>Popular Tag</Text>
+          <Text style={styles.sectionTitle}>Amenities</Text>
           <MaterialIcons
             name="keyboard-arrow-down"
             size={24}
@@ -205,8 +197,8 @@ const FilterComponent = ({
         </TouchableOpacity>
         {openSections.tags && (
           <View style={styles.tagsContainer}>
-            {cleanTags(allTags).map((tag) => {
-              const isSelected = filters.selectedTags.includes(tag);
+            {allTags.map((tag) => {
+              const isSelected = filters.tags.includes(tag);
               return (
                 <TouchableOpacity
                   key={tag}
@@ -217,9 +209,9 @@ const FilterComponent = ({
                   onPress={() =>
                     setFilters((prev) => ({
                       ...prev,
-                      selectedTags: isSelected
-                        ? prev.selectedTags.filter((t) => t !== tag)
-                        : [...prev.selectedTags, tag],
+                      tags: isSelected
+                        ? prev.tags.filter((t) => t !== tag)
+                        : [...prev.tags, tag],
                     }))
                   }
                 >
@@ -238,6 +230,7 @@ const FilterComponent = ({
         )}
       </View>
 
+      {/* Apply Button */}
       <TouchableOpacity
         onPress={handleFilterApply}
         style={styles.applyButton}
@@ -250,19 +243,19 @@ const FilterComponent = ({
 
 const styles = StyleSheet.create({
   container: {
-    padding: 12,
+    padding: 16,
     backgroundColor: '#fff',
   },
   section: {
     marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
   },
   sectionTitle: {
     fontSize: 16,
@@ -270,22 +263,17 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   sectionContent: {
-    paddingVertical: 8,
+    paddingVertical: 12,
   },
   radioRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   radioLabel: {
     marginLeft: 8,
     fontSize: 14,
     color: '#4b5563',
-  },
-  radioCount: {
-    marginLeft: 'auto',
-    fontSize: 12,
-    color: '#9ca3af',
   },
   priceRangeLabels: {
     flexDirection: 'row',
@@ -299,7 +287,7 @@ const styles = StyleSheet.create({
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   starsRow: {
     flexDirection: 'row',
@@ -315,36 +303,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginTop: 8,
   },
   tagButton: {
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    marginRight: 8,
-    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   tagButtonSelected: {
-    backgroundColor: '#dbeafe',
+    backgroundColor: '#e0f2fe',
+    borderColor: '#7dd3fc',
   },
   tagButtonUnselected: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f9fafb',
   },
   tagText: {
-    fontSize: 12,
+    fontSize: 14,
   },
   tagTextSelected: {
-    color: '#2563eb',
+    color: '#0369a1',
+    fontWeight: '500',
   },
   tagTextUnselected: {
-    color: '#4b5563',
+    color: '#6b7280',
   },
   applyButton: {
-    marginTop: 12,
-    backgroundColor: '#3b82f6',
-    paddingVertical: 12,
-    borderRadius: 6,
+    backgroundColor: '#e53935',
+    paddingVertical: 14,
+    borderRadius: 8,
     alignItems: 'center',
+    marginTop: 16,
   },
   applyButtonText: {
     color: '#fff',

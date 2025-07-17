@@ -56,28 +56,36 @@ const LocalProducts = ({ navigation }) => {
     );
   }
 
-  const renderProductCard = (product) => (
-    <TouchableOpacity
-      key={product.id}
-      style={styles.productCard}
-      onPress={() =>
-        navigation.navigate("ProductDetail", {
-          productId: product.id,
-        })
-      }
+  const renderProductCard = (product, index) => (
+    <View
+      key={product?._id ?? `product-${index}`}
+      style={styles.productCardContainer}
     >
-      <Image
-        source={{ uri: product.imageUrl || "https://via.placeholder.com/150" }}
-        style={styles.productImage}
-        resizeMode="cover"
-      />
-      <View style={styles.productInfo}>
-        <Text style={styles.productName} numberOfLines={2}>
-          {product.name}
-        </Text>
-        <Text style={styles.productPrice}>${product.price.toFixed(2)}</Text>
-      </View>
-    </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.productCard}
+        onPress={() =>
+          navigation.navigate("ProductDetails", {
+            slug: product?.slug,
+          })
+        }
+      >
+        <Image
+          source={
+            typeof product?.imageUrl === "string" && product?.imageUrl.trim()
+              ? { uri: product?.imageUrl }
+              : require("../../../../assets/T-App-icon.png")
+          }
+          style={styles.productImage}
+          resizeMode="cover"
+        />
+        <View style={styles.productInfo}>
+          <Text style={styles.productName} numberOfLines={2}>
+            {product.name}
+          </Text>
+          <Text style={styles.productPrice}>${product.price.toFixed(2)}</Text>
+        </View>
+      </TouchableOpacity>
+    </View>
   );
 
   // Get first 15 products
@@ -85,7 +93,7 @@ const LocalProducts = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
       >
@@ -94,11 +102,11 @@ const LocalProducts = ({ navigation }) => {
         <View style={styles.categoriesContainer}>
           {categories?.map((category) => (
             <TouchableOpacity
-              key={category.id}
+              key={category._id}
               style={styles.categoryButton}
               onPress={() =>
                 navigation.navigate("CategoryProducts", {
-                  categoryId: category.id,
+                  categoryId: category._id,
                   categoryName: category.name,
                 })
               }
@@ -111,16 +119,14 @@ const LocalProducts = ({ navigation }) => {
         <Text style={styles.sectionHeader}>Featured Products</Text>
 
         <View style={styles.productsGrid}>
-          {displayedProducts.map((product) => (
-            <View key={product.id} style={styles.productCardContainer}>
-              {renderProductCard(product)}
-            </View>
-          ))}
+          {displayedProducts.map((product, index) =>
+            renderProductCard(product, index)
+          )}
         </View>
 
         <TouchableOpacity
           style={styles.seeAllButton}
-          onPress={() => navigation.navigate("ProductPage")}
+          onPress={() => navigation.navigate("ProductDisplay")}
         >
           <Text style={styles.seeAllButtonText}>See All Products</Text>
         </TouchableOpacity>
