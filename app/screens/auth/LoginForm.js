@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -8,20 +8,20 @@ import {
   StyleSheet,
   Image,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import ForgetPasswordModal from "../../custom/ForgetPasswordModal"; // Make sure this modal is React Native compatible
-import { useLoginMutation } from "../../services/loginApi";
+import { useLoginMutation } from "../../services/auth/authApiSlice";
 import { useDispatch } from "react-redux";
-import { setCredentials } from "../../services/auth/authSlice";
+import { setCredentials } from "../../features/authSlice";
+import { Feather } from "@expo/vector-icons";
 
 const LoginForm = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [login, { isLoading, isError, error }] = useLoginMutation();
@@ -50,7 +50,7 @@ const LoginForm = () => {
       // Navigate to the home or main screen after login
       navigation.reset({
         index: 0,
-        routes: [{ name: "Home" }], // change 'Home' to your main screen name
+        routes: [{ name: "App" }], 
       });
     } catch (err) {
       Alert.alert("Login Failed", err?.data?.message || "Please try again.");
@@ -59,96 +59,103 @@ const LoginForm = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.select({ ios: "padding", android: undefined })}
-      style={styles.container}
+    <ScrollView
+      contentContainerStyle={styles.scrollContainer}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
     >
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Text style={styles.title}>Welcome Back</Text>
-        <Image
-          source={require("../../../assets/Images/red-line.png")}
-          style={styles.image}
-          resizeMode="contain"
+      <Text style={styles.title}>Welcome Back</Text>
+      <Image
+        source={require("../../../assets/Images/red-line.png")}
+        style={styles.image}
+        resizeMode="contain"
+      />
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>Username</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter your username"
+          value={username}
+          onChangeText={setUsername}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="default"
+          returnKeyType="next"
         />
+      </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Username</Text>
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>Password</Text>
+        <View style={styles.passwordInputWrapper}>
           <TextInput
-            style={styles.input}
-            placeholder="Enter your username"
-            value={username}
-            onChangeText={setUsername}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="default"
-            returnKeyType="next"
-          />
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={styles.input}
+            style={styles.inputWithIcon}
             placeholder="Enter your password"
             value={password}
             onChangeText={setPassword}
-            secureTextEntry
+            secureTextEntry={!passwordVisible}
             returnKeyType="done"
           />
-        </View>
-
-        <View style={styles.row}>
           <TouchableOpacity
-            onPress={() => setRememberMe(!rememberMe)}
-            style={styles.checkboxContainer}
+            onPress={() => setPasswordVisible(!passwordVisible)}
+            style={styles.eyeIcon}
+            activeOpacity={0.7}
           >
-            <View style={[styles.checkbox, rememberMe && styles.checkedBox]} />
-            <Text style={styles.checkboxLabel}>Remember me</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={openModal}>
-            <Text style={styles.forgotPasswordText}>Forget Password?</Text>
+            <Feather
+              name={passwordVisible ? "eye" : "eye-off"}
+              size={20}
+              color="#666"
+            />
           </TouchableOpacity>
         </View>
+      </View>
 
+      <View style={styles.row}>
         <TouchableOpacity
-          style={[styles.button, isLoading && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={isLoading}
+          onPress={() => setRememberMe(!rememberMe)}
+          style={styles.checkboxContainer}
         >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Log in</Text>
-          )}
+          <View style={[styles.checkbox, rememberMe && styles.checkedBox]} />
+          <Text style={styles.checkboxLabel}>Remember me</Text>
         </TouchableOpacity>
 
-        {isError && (
-          <Text style={styles.errorText}>
-            {error?.data?.message || "Login failed. Please try again."}
-          </Text>
+        <TouchableOpacity onPress={openModal}>
+          <Text style={styles.forgotPasswordText}>Forget Password?</Text>
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity
+        style={[styles.button, isLoading && styles.buttonDisabled]}
+        onPress={handleLogin}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Log in</Text>
         )}
+      </TouchableOpacity>
 
-        <View style={styles.createAccountContainer}>
-          <Text style={styles.createAccountText}>CREATE AN ACCOUNT</Text>
-        </View>
+      {isError && (
+        <Text style={styles.errorText}>
+          {error?.data?.message || "Login failed. Please try again."}
+        </Text>
+      )}
 
-        <ForgetPasswordModal showModal={showModal} closeModal={closeModal} />
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <View style={styles.createAccountContainer}>
+        <Text style={styles.createAccountText}>CREATE AN ACCOUNT</Text>
+      </View>
+
+      <ForgetPasswordModal showModal={showModal} closeModal={closeModal} />
+    </ScrollView>
   );
 };
 
 export default LoginForm;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   scrollContainer: {
+    flexGrow: 1,
     padding: 10,
     alignItems: "center",
   },
@@ -242,5 +249,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#4B5563", // gray-600
     textAlign: "center",
+  },
+  passwordInputWrapper: {
+    position: "relative",
+    width: "100%",
+  },
+  inputWithIcon: {
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingRight: 44, 
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: "#fff",
+  },
+  eyeIcon: {
+    position: "absolute",
+    right: 14,
+    top: "50%",
+    transform: [{ translateY: -10 }],
   },
 });

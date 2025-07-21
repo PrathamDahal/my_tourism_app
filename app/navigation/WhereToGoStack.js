@@ -13,7 +13,7 @@ const WhereToGoStack = () => {
         headerShown: false, 
       }}
     >
-      <Stack.Screen name="WhereToGo" component={WhereToGo} />
+      <Stack.Screen name="whereToGo" component={WhereToGo} />
       <Stack.Screen name="DestinationDetails" component={DestinationDetails} />
       <Stack.Screen name="DestinationsPage" component={DestinationsPage} />
     </Stack.Navigator>

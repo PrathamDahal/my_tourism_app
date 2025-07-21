@@ -1,8 +1,9 @@
+// authSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
   isAuthenticated: false,
-  accessToken: null,   // no localStorage here
+  accessToken: null,
   refreshToken: null,
   role: null,
 };

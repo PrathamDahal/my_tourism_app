@@ -1,189 +1,270 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Button, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import {
+  useClearCartMutation,
+  useGetCartQuery,
+  useRemoveFromCartMutation,
+  useUpdateCartMutation,
+} from "../../services/cartApi";
 
-const MyCart = ({ navigation }) => {
-  const [cartItems, setCartItems] = useState([
-    { id: '1', name: 'Local Handicraft', price: 25.99, quantity: 1, stock: 3 },
-    { id: '2', name: 'Organic Coffee', price: 12.50, quantity: 2, stock: 5 },
-    { id: '3', name: 'Traditional Shawl', price: 35.00, quantity: 1, stock: 1 },
-  ]);
-  const [errorMessage, setErrorMessage] = useState(null);
+const MyCart = () => {
+  const navigation = useNavigation();
+  const { data: cartData, isLoading, isError, refetch } = useGetCartQuery();
+  const [removeFromCart] = useRemoveFromCartMutation();
+  const [clearCart] = useClearCartMutation();
+  const [updateCart] = useUpdateCartMutation();
 
-  const updateQuantity = (id, newQuantity) => {
-    const product = cartItems.find(item => item.id === id);
-    if (!product) return;
+  const [products, setProducts] = useState([]);
+  const [hasCheckedItems, setHasCheckedItems] = useState(false);
+  const [total, setTotal] = useState(0);
 
-    if (newQuantity < 1) return;
-
-    if (product.stock && newQuantity > product.stock) {
-      setErrorMessage(`Cannot add more than available stock (${product.stock})`);
-      setTimeout(() => setErrorMessage(null), 3000);
-      return;
+  const transformCartData = (apiData) => {
+    if (!apiData || !apiData.items || !Array.isArray(apiData.items)) {
+      console.error("Invalid cart data structure:", apiData);
+      return [];
     }
+    const vendorMap = new Map();
 
-    setCartItems(cartItems.map(item =>
-      item.id === id ? { ...item, quantity: newQuantity } : item
-    ));
+    apiData.items.forEach((item) => {
+      if (!item || !item.product) return;
+
+      const product = item.product;
+      const sellerId = product.seller?._id || "default";
+      const sellerName = product.seller
+        ? `${product.seller.firstName} ${product.seller.lastName}`
+        : "Store";
+
+      if (!vendorMap.has(sellerId)) {
+        vendorMap.set(sellerId, {
+          vendorId: sellerId,
+          vendor: sellerName,
+          items: [],
+          checked: false,
+        });
+      }
+
+      const vendor = vendorMap.get(sellerId);
+      const safeQuantity = Math.min(item.quantity, product.stock || 0);
+      vendor.items.push({
+        id: item._id,
+        productId: product._id,
+        name: product.name,
+        color: product.color || "N/A",
+        quantity: safeQuantity,
+        price: product.price,
+        stock: product.stock || 0,
+        checked: false,
+        image: product.images?.[0] || null,
+      });
+    });
+
+    return Array.from(vendorMap.values());
   };
 
-  const removeItem = (id) => {
-    setCartItems(cartItems.filter(item => item.id !== id));
+  useEffect(() => {
+    if (cartData) {
+      const transformedData = transformCartData(cartData);
+      setProducts(transformedData);
+    }
+  }, [cartData]);
+
+  useEffect(() => {
+    let calculatedTotal = 0;
+    products.forEach((vendor) => {
+      vendor.items.forEach((item) => {
+        if (item.checked) {
+          calculatedTotal += item.quantity * item.price;
+        }
+      });
+    });
+    setTotal(calculatedTotal);
+    const checked = products.some(
+      (vendor) => vendor.checked || vendor.items.some((item) => item.checked)
+    );
+    setHasCheckedItems(checked);
+  }, [products]);
+
+  const toggleItemCheck = (vendorIndex, itemIndex) => {
+    const updatedProducts = [...products];
+    const item = updatedProducts[vendorIndex].items[itemIndex];
+    item.checked = !item.checked;
+    const vendor = updatedProducts[vendorIndex];
+    vendor.checked = vendor.items.every((item) => item.checked);
+    setProducts(updatedProducts);
   };
 
-  const calculateTotal = () => {
-    return cartItems
-      .reduce((total, item) => total + (item.price * item.quantity), 0)
-      .toFixed(2);
+  const toggleVendorCheck = (vendorIndex) => {
+    const updatedProducts = [...products];
+    const vendor = updatedProducts[vendorIndex];
+    vendor.checked = !vendor.checked;
+    vendor.items.forEach((item) => {
+      item.checked = vendor.checked;
+    });
+    setProducts(updatedProducts);
   };
+
+  const updateQuantity = async (vendorIndex, itemIndex, newQuantity) => {
+    const updatedProducts = JSON.parse(JSON.stringify(products));
+    const item = updatedProducts[vendorIndex].items[itemIndex];
+    newQuantity = Number(newQuantity);
+    if (isNaN(newQuantity) || newQuantity < 1) return;
+    newQuantity = Math.min(newQuantity, item.stock);
+    if (newQuantity === item.quantity) return;
+
+    item.quantity = newQuantity;
+    setProducts(updatedProducts);
+
+    try {
+      await updateCart({ productId: item.productId, quantity: newQuantity });
+      refetch();
+    } catch (error) {
+      console.error("Failed to update quantity:", error);
+      refetch();
+    }
+  };
+
+  const formatPrice = (price) => `$${price.toFixed(2)}`;
+  const calculateSubtotal = (item) => (item.quantity * item.price).toFixed(2);
+
+  if (isLoading) return <ActivityIndicator size="large" style={{ marginTop: 50 }} />;
+
+  if (isError) return <Text style={styles.error}>Failed to load cart. Please log in again.</Text>;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>My Cart</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.header}>Shopping Cart</Text>
+      {products.map((vendor, vendorIndex) => (
+        <View key={vendor.vendorId} style={styles.vendorContainer}>
+          <View style={styles.vendorHeader}>
+            <TouchableOpacity onPress={() => toggleVendorCheck(vendorIndex)}>
+              <Text style={styles.checkbox}>{vendor.checked ? "☑️" : "⬜️"}</Text>
+            </TouchableOpacity>
+            <Text style={styles.vendorName}>{vendor.vendor}</Text>
+          </View>
 
-      {errorMessage && (
-        <View style={styles.errorToast}>
-          <Text style={styles.errorText}>{errorMessage}</Text>
-        </View>
-      )}
-
-      {cartItems.length === 0 ? (
-        <View style={styles.emptyCart}>
-          <Ionicons name="cart-outline" size={64} color="#ccc" />
-          <Text style={styles.emptyText}>Your cart is empty</Text>
-          <Button
-            title="Browse Products"
-            onPress={() => navigation.navigate('LocalProducts')}
-            color="#841584"
-          />
-        </View>
-      ) : (
-        <>
-          <ScrollView>
-            {cartItems.map(item => (
-              <View key={item.id} style={styles.cartItem}>
-                <View style={styles.itemInfo}>
-                  <Text style={styles.itemName}>{item.name}</Text>
-                  <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
-                </View>
-                <View style={styles.quantityContainer}>
-                  <TouchableOpacity
-                    onPress={() => updateQuantity(item.id, item.quantity - 1)}
-                    style={styles.quantityButton}
-                  >
-                    <Ionicons name="remove" size={20} color="#841584" />
-                  </TouchableOpacity>
-                  <Text style={styles.quantity}>{item.quantity}</Text>
-                  <TouchableOpacity
-                    onPress={() => updateQuantity(item.id, item.quantity + 1)}
-                    style={styles.quantityButton}
-                  >
-                    <Ionicons name="add" size={20} color="#841584" />
-                  </TouchableOpacity>
-                </View>
+          {vendor.items.map((item, itemIndex) => (
+            <View key={item.id} style={styles.itemRow}>
+              <TouchableOpacity onPress={() => toggleItemCheck(vendorIndex, itemIndex)}>
+                <Text style={styles.checkbox}>{item.checked ? "✅" : "⬜️"}</Text>
+              </TouchableOpacity>
+              <View style={styles.itemDetails}>
+                <Text>{item.name}</Text>
+                <Text>Color: {item.color}</Text>
+                <Text>Price: {formatPrice(item.price)}</Text>
+                <Text>Stock: {item.stock}</Text>
+              </View>
+              <View style={styles.quantityControl}>
                 <TouchableOpacity
-                  onPress={() => removeItem(item.id)}
-                  style={styles.removeButton}
+                  onPress={() => updateQuantity(vendorIndex, itemIndex, item.quantity - 1)}
+                  disabled={item.quantity <= 1}
                 >
-                  <Ionicons name="trash-outline" size={20} color="#ff4444" />
+                  <Text style={styles.quantityBtn}>➖</Text>
+                </TouchableOpacity>
+                <Text style={styles.quantityText}>{item.quantity}</Text>
+                <TouchableOpacity
+                  onPress={() => updateQuantity(vendorIndex, itemIndex, item.quantity + 1)}
+                  disabled={item.quantity >= item.stock}
+                >
+                  <Text style={styles.quantityBtn}>➕</Text>
                 </TouchableOpacity>
               </View>
-            ))}
-          </ScrollView>
+              <Text style={styles.subtotal}>Subtotal: ${calculateSubtotal(item)}</Text>
+            </View>
+          ))}
+        </View>
+      ))}
 
-          <View style={styles.totalContainer}>
-            <Text style={styles.totalText}>Total: ${calculateTotal()}</Text>
-            <Button
-              title="Proceed to Checkout"
-              onPress={() => Alert.alert('Checkout', 'Proceeding to payment')}
-              color="#841584"
-            />
-          </View>
-        </>
-      )}
-    </View>
+      <View style={styles.totalContainer}>
+        <Text style={styles.totalText}>Total: ${total.toFixed(2)}</Text>
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: '#fff',
+    padding: 16,
+    backgroundColor: "#f8f8f8",
   },
-  title: {
+  header: {
     fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#333',
+    fontWeight: "bold",
+    marginBottom: 16,
+    textAlign: "center",
   },
-  emptyCart: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  error: {
+    marginTop: 40,
+    fontSize: 16,
+    textAlign: "center",
+    color: "red",
   },
-  emptyText: {
-    fontSize: 18,
-    color: '#666',
-    marginVertical: 20,
-  },
-  errorToast: {
-    backgroundColor: '#fee2e2',
+  vendorContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 10,
     padding: 10,
-    borderRadius: 6,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  vendorHeader: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 10,
   },
-  errorText: {
-    color: '#b91c1c',
-    textAlign: 'center',
+  vendorName: {
+    marginLeft: 10,
+    fontWeight: "bold",
+    color: "#333",
   },
-  cartItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+  checkbox: {
+    fontSize: 18,
   },
-  itemInfo: {
+  itemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  itemDetails: {
     flex: 1,
+    marginLeft: 10,
   },
-  itemName: {
+  quantityControl: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 8,
+  },
+  quantityBtn: {
+    fontSize: 18,
+    paddingHorizontal: 6,
+  },
+  quantityText: {
     fontSize: 16,
-    fontWeight: '500',
+    paddingHorizontal: 6,
   },
-  itemPrice: {
+  subtotal: {
+    fontWeight: "bold",
     fontSize: 14,
-    color: '#666',
-    marginTop: 5,
-  },
-  quantityContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 15,
-  },
-  quantityButton: {
-    padding: 5,
-  },
-  quantity: {
-    marginHorizontal: 10,
-    fontSize: 16,
-  },
-  removeButton: {
-    padding: 5,
   },
   totalContainer: {
     marginTop: 20,
-    paddingTop: 15,
+    paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    borderColor: "#ccc",
   },
   totalText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
+    textAlign: "right",
   },
 });
 

@@ -1,6 +1,4 @@
 // components/HeroSection.js
-
-import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 
 const HeroSection = ({ image, title, description, buttonText, onButtonPress }) => {
@@ -37,11 +35,21 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
     opacity: 1,
   },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    zIndex: 0,
+  },
   textContainer: {
     zIndex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 30,
+    paddingVertical: 15,
   },
   title: {
     fontSize: 30,
@@ -58,9 +66,14 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: '#FE9900',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 5,
+    paddingVertical: 14,
+    paddingHorizontal: 30,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
   },
   buttonText: {
     color: '#fff',
@@ -68,5 +81,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
 
 export default HeroSection;

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useContext, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -13,15 +13,17 @@ import {
 import { useRoute, useNavigation } from "@react-navigation/native";
 import CustomerFeedback from "./CustomerFeedback";
 import { useGetProductBySlugQuery } from "../../../services/productApi";
-import { useAddToCartMutation } from "../../../services/CartApi";
+import { useAddToCartMutation } from "../../../services/cartApi";
 import RatingStars from "./../../../custom/RatingStars";
 import { customerFeedback } from "../../../data/CustomerFeedback";
+import { AuthContext } from "../../../context/AuthContext";
 
 const { width } = Dimensions.get("window");
 
 const ProductDetails = () => {
   const route = useRoute();
   const navigation = useNavigation();
+  const { user } = useContext(AuthContext);
   const { slug } = route.params || {};
   const [quantity, setQuantity] = useState(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -46,7 +48,14 @@ const ProductDetails = () => {
   };
 
   const handleAddToCartClick = async () => {
-    if (!product) return;
+    if (!user) {
+      navigation.navigate("Auth", {
+        screen: "Login",
+        params: { from: "cart" },
+      });
+      return;
+    }
+
     if (product.stock && quantity > product.stock) {
       setErrorMessage(
         `Cannot add more than available stock (${product.stock})`
@@ -54,10 +63,11 @@ const ProductDetails = () => {
       setShowErrorToast(true);
       return;
     }
+
     try {
       await addToCart({ productId: product._id, quantity }).unwrap();
       navigation.navigate("MyCart");
-    } catch {
+    } catch (err) {
       setErrorMessage("Failed to add item to cart");
       setShowErrorToast(true);
     }
@@ -70,7 +80,7 @@ const ProductDetails = () => {
       </View>
     );
   }
-  
+
   if (isError || !product) {
     return (
       <View style={styles.center}>
@@ -224,13 +234,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingTop: 40,
   },
-  center: { 
-    flex: 1, 
-    justifyContent: "center", 
-    alignItems: "center" 
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  galleryContainer: { 
-    marginBottom: 20 
+  galleryContainer: {
+    marginBottom: 20,
   },
   thumbnailList: {
     paddingHorizontal: 12,
@@ -244,9 +254,9 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
     borderRadius: 4,
   },
-  selectedThumbnail: { 
-    borderColor: "#007AFF", 
-    borderWidth: 2 
+  selectedThumbnail: {
+    borderColor: "#007AFF",
+    borderWidth: 2,
   },
   mainImage: {
     width: width - 24,
@@ -254,13 +264,13 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginTop: 12,
   },
-  detailsContainer: { 
-    paddingHorizontal: 12 
+  detailsContainer: {
+    paddingHorizontal: 12,
   },
-  title: { 
-    fontSize: 22, 
-    fontWeight: "600", 
-    marginBottom: 8 
+  title: {
+    fontSize: 22,
+    fontWeight: "600",
+    marginBottom: 8,
   },
   price: {
     fontSize: 20,
@@ -268,20 +278,20 @@ const styles = StyleSheet.create({
     color: "#007AFF",
     marginVertical: 8,
   },
-  seller: { 
-    fontSize: 14, 
-    color: "#444", 
-    marginBottom: 8 
+  seller: {
+    fontSize: 14,
+    color: "#444",
+    marginBottom: 8,
   },
-  description: { 
-    fontSize: 14, 
-    color: "#555", 
-    marginBottom: 16 
+  description: {
+    fontSize: 14,
+    color: "#555",
+    marginBottom: 16,
   },
-  quantityRow: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    marginBottom: 16 
+  quantityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
   },
   quantityButton: {
     padding: 8,
@@ -289,22 +299,22 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     borderRadius: 4,
   },
-  qtySign: { 
+  qtySign: {
     fontSize: 18,
     width: 24,
-    textAlign: 'center',
+    textAlign: "center",
   },
-  qtyNumber: { 
-    marginHorizontal: 12, 
-    fontSize: 16 
+  qtyNumber: {
+    marginHorizontal: 12,
+    fontSize: 16,
   },
-  disabledSign: { 
-    color: "#ccc" 
+  disabledSign: {
+    color: "#ccc",
   },
-  stockInfo: { 
-    marginLeft: 16, 
-    fontSize: 13, 
-    color: "#888" 
+  stockInfo: {
+    marginLeft: 16,
+    fontSize: 13,
+    color: "#888",
   },
   addButton: {
     backgroundColor: "#007AFF",
@@ -313,52 +323,52 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  addText: { 
-    color: "#fff", 
-    fontSize: 16, 
-    fontWeight: "600" 
+  addText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
-  categoryTags: { 
-    fontSize: 14, 
-    color: "#555", 
-    marginBottom: 4 
+  categoryTags: {
+    fontSize: 14,
+    color: "#555",
+    marginBottom: 4,
   },
-  bold: { 
-    fontWeight: "600" 
+  bold: {
+    fontWeight: "600",
   },
-  tabBar: { 
-    flexDirection: "row", 
-    borderBottomWidth: 1, 
+  tabBar: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
     borderColor: "#ddd",
     marginTop: 20,
     marginHorizontal: 12,
   },
-  tabButton: { 
-    flex: 1, 
-    paddingVertical: 12, 
-    alignItems: "center" 
+  tabButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
   },
-  activeTab: { 
-    borderBottomWidth: 2, 
-    borderColor: "#007AFF" 
+  activeTab: {
+    borderBottomWidth: 2,
+    borderColor: "#007AFF",
   },
-  tabText: { 
-    fontSize: 16 
+  tabText: {
+    fontSize: 16,
   },
-  tabActiveText: { 
-    color: "#007AFF", 
-    fontWeight: "600" 
+  tabActiveText: {
+    color: "#007AFF",
+    fontWeight: "600",
   },
-  tabInactiveText: { 
-    color: "#888" 
+  tabInactiveText: {
+    color: "#888",
   },
-  tabContent: { 
-    padding: 12, 
-    fontSize: 14, 
-    color: "#444" 
+  tabContent: {
+    padding: 12,
+    fontSize: 14,
+    color: "#444",
   },
   toast: {
-    position: 'absolute',
+    position: "absolute",
     top: 10,
     left: 20,
     right: 20,

@@ -44,7 +44,9 @@ const Home = ({ navigation }) => {
         title="Discover Our Community"
         description="Find the best local experiences and hidden gems"
         buttonText="Explore Now"
-        onButtonPress={() => navigation.navigate("WhereToGo")}
+        onButtonPress={() =>
+          navigation.push("App", { initialTab: "whereToGo" })
+        }
       />
       <ImageBackground
         source={require("../../../../assets/Images/waves-yellow.jpg")}
@@ -55,7 +57,9 @@ const Home = ({ navigation }) => {
           {/* Search Bar */}
           <TouchableOpacity
             style={styles.searchBar}
-            onPress={() => navigation.navigate("WhereToGo")}
+            onPress={() =>
+              navigation.push("App", { initialTab: "whereToGo" })
+            }
           >
             <Ionicons name="search" size={20} color="#666" />
             <Text style={styles.searchText}>

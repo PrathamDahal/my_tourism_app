@@ -10,8 +10,20 @@ import {
 } from "react-native";
 import AppText from "../components/AppText";
 
-const SidebarTabView = ({ tabs }) => {
-  const [index, setIndex] = useState(0);
+const SidebarTabView = ({ tabs, activeTabKey }) => {
+  const [index, setIndex] = useState(
+    tabs.findIndex((tab) => tab.key === activeTabKey) || 0
+  );
+
+  React.useEffect(() => {
+    if (activeTabKey) {
+      const i = tabs.findIndex((tab) => tab.key === activeTabKey);
+      if (i !== -1 && i !== index) {
+        setIndex(i);
+      }
+    }
+  }, [activeTabKey]);
+
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [routes] = useState(
     tabs.map((tab) => ({ key: tab.key, title: tab.title }))
@@ -85,10 +97,8 @@ const SidebarTabView = ({ tabs }) => {
         >
           <View style={styles.welcomeContainer}>
             <AppText style={styles.welcomeText} fontFamily="allura">
-                Panchpokhari{" "}
-              <AppText style={styles.welcomeHighlight}>
-                Tourism
-              </AppText>
+              Panchpokhari{" "}
+              <AppText style={styles.welcomeHighlight}>Tourism</AppText>
             </AppText>
           </View>
           <View style={styles.sidebarHeader}>
@@ -133,7 +143,7 @@ const styles = StyleSheet.create({
   },
   menuButtonText: {
     fontSize: 24,
-    color: '#fff'
+    color: "#fff",
   },
   sidebar: {
     position: "absolute",

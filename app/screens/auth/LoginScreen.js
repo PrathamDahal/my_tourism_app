@@ -1,32 +1,61 @@
-// src/pages/LoginScreen.js
-import { View, Text, Image, StyleSheet, ScrollView, Dimensions } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  ScrollView,
+  Dimensions,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
 import LoginForm from "./LoginForm";
+import { useRoute } from "@react-navigation/native";
+import { useEffect } from "react";
 
 const { width } = Dimensions.get("window");
 
 const LoginScreen = () => {
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {/* Left Section (Tourism Info) */}
-      <View style={styles.leftSection}>
-        <Image
-          source={require("../../../assets/T-App-icon.png")}
-          style={styles.image}
-          resizeMode="cover"
-        />
-        <Text style={styles.title}>Panchpokhari Tourism</Text>
-        <Text style={styles.subtitle}>PanchPokhari Thangpal Gaupailka</Text>
-        <Text style={styles.description}>
-          Discover authentic destinations and unforgettable experiences tailored
-          for every traveler.
-        </Text>
-      </View>
+  const route = useRoute();
 
-      {/* Right Section (Login Form) */}
-      <View style={styles.rightSection}>
-        <LoginForm />
-      </View>
-    </ScrollView>
+  useEffect(() => {
+    if (route.params?.from === "cart") {
+      Alert.alert(
+        "Authentication Required",
+        "Please Login First to AddToCart!!!"
+      );
+    }
+  }, [route.params]);
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 20}
+      style={{ flex: 1 }}
+    >
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ flexGrow: 1 }}
+      >
+        <View style={styles.leftSection}>
+          <Image
+            source={require("../../../assets/T-App-icon.png")}
+            style={styles.image}
+            resizeMode="cover"
+          />
+          <Text style={styles.title}>Panchpokhari Tourism</Text>
+          <Text style={styles.subtitle}>PanchPokhari Thangpal Gaupailka</Text>
+          <Text style={styles.description}>
+            Discover authentic destinations and unforgettable experiences
+            tailored for every traveler.
+          </Text>
+        </View>
+
+        <View style={styles.rightSection}>
+          <LoginForm />
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -56,7 +85,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 30,
     color: "red",
-    fontFamily: "redressed", // Make sure this font is loaded via expo-font if used
+    fontFamily: "redressed",
     textAlign: "center",
     marginBottom: 10,
   },
@@ -72,7 +101,7 @@ const styles = StyleSheet.create({
   },
   rightSection: {
     width: width >= 768 ? "50%" : "100%",
-    backgroundColor: "#e5e7eb", // Tailwind's bg-gray-200
+    backgroundColor: "#e5e7eb",
     padding: 20,
     borderRadius: 10,
     justifyContent: "center",
