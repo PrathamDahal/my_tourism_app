@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -13,26 +13,48 @@ import FilterComponent from "../../../components/WhereToStay/FilterComponent";
 import { stays } from "../../../data/StayOptions";
 import Pagination from "./../../../custom/Pagination";
 import { useNavigation } from "@react-navigation/native";
+import RatingStars from "../../../custom/RatingStars";
 
 const WhereToStay = () => {
   const navigation = useNavigation();
-  const subcategories = ["Hotels", "Villa", "Resort"];
-  const allTags = ["Free Wifi", "Breakfast", "Pool", "Parking"];
+  const allTags = useMemo(() => {
+    const tags = stays.flatMap((stay) => stay.tags || []);
+    return [...new Set(tags)];
+  }, []);
 
   const [showFilter, setShowFilter] = useState(false);
   const [filters, setFilters] = useState({
-    subcategory: "",
-    tags: [],
+    subcategory: "", // controlled by StayOptions
+    tags: [], // controlled by FilterComponent
   });
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [filteredProducts, setFilteredProducts] = useState(stays);
 
+  // Update when filters change
   useEffect(() => {
     let filtered = stays;
 
     if (filters.subcategory) {
       filtered = filtered.filter((item) => item.type === filters.subcategory);
+    }
+
+    if (filters.tags.length > 0) {
+      filtered = filtered.filter((item) =>
+        filters.tags.every((tag) => item.tags.includes(tag))
+      );
+    }
+
+    if (filters.priceRange?.length === 2) {
+      const [min, max] = filters.priceRange;
+      filtered = filtered.filter(
+        (item) => item.price >= min && item.price <= max
+      );
+    }
+
+    if (filters.minRating) {
+      filtered = filtered.filter((item) => item.rating >= filters.minRating);
     }
 
     setFilteredProducts(filtered);
@@ -46,8 +68,15 @@ const WhereToStay = () => {
   );
 
   const handleFilterApply = () => {
-    console.log("Filters applied:", filters);
-    setShowFilter(false); // Optional: Hide filter after applying
+    setShowFilter(false);
+  };
+
+  // Called when StayOptions filter is clicked
+  const handleTypeSelect = (type) => {
+    setFilters((prev) => ({
+      ...prev,
+      subcategory: type === "All" ? "" : type,
+    }));
   };
 
   return (
@@ -57,9 +86,10 @@ const WhereToStay = () => {
         Find the perfect accommodation for your trip
       </Text>
 
-      <StayOptions />
+      {/* First filter: Stay type */}
+      <StayOptions onSelectType={handleTypeSelect} />
 
-      {/* Red Filter by... button */}
+      {/* Second filter: Additional tags, price, rating etc */}
       <TouchableOpacity
         style={styles.filterButton}
         onPress={() => setShowFilter((prev) => !prev)}
@@ -75,26 +105,23 @@ const WhereToStay = () => {
         </View>
       </TouchableOpacity>
 
-      {/* Conditionally show FilterComponent */}
       {showFilter && (
         <FilterComponent
-          subcategories={subcategories}
           allTags={allTags}
           filters={filters}
           setFilters={setFilters}
           handleFilterApply={handleFilterApply}
+          stays={stays}
         />
       )}
 
-      {/* Products Grid */}
+      {/* Products */}
       <View style={styles.productsGrid}>
         {currentItems.map((stay) => (
           <TouchableOpacity
             key={stay.id}
             style={styles.productCard}
-            onPress={() =>
-              navigation.navigate("StayDetails", { id: stay.id })
-            }
+            onPress={() => navigation.navigate("StayDetails", { id: stay.id })}
             activeOpacity={0.8}
           >
             <Image
@@ -107,6 +134,7 @@ const WhereToStay = () => {
               {stay.location}
             </Text>
             <Text style={styles.productPrice}>Rs. {stay.price}</Text>
+            {stay.rating && <RatingStars rating={stay.rating} />}
           </TouchableOpacity>
         ))}
       </View>
@@ -174,7 +202,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   productCard: {
-    width: "48%", // two cards per row with some spacing
+    width: "48%",
     backgroundColor: "#fff",
     borderRadius: 10,
     padding: 10,

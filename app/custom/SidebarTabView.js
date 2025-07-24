@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import { useState, useRef, useEffect, useContext } from "react";
 import {
   View,
   TouchableOpacity,
@@ -9,13 +9,21 @@ import {
   SafeAreaView,
 } from "react-native";
 import AppText from "../components/AppText";
+import { useAuth } from "../context/AuthContext";
+import UserProfile from "./UserProfile";
 
 const SidebarTabView = ({ tabs, activeTabKey }) => {
   const [index, setIndex] = useState(
     tabs.findIndex((tab) => tab.key === activeTabKey) || 0
   );
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [routes] = useState(
+    tabs.map((tab) => ({ key: tab.key, title: tab.title }))
+  );
 
-  React.useEffect(() => {
+  const sidebarAnimation = useRef(new Animated.Value(-300)).current;
+
+  useEffect(() => {
     if (activeTabKey) {
       const i = tabs.findIndex((tab) => tab.key === activeTabKey);
       if (i !== -1 && i !== index) {
@@ -23,12 +31,6 @@ const SidebarTabView = ({ tabs, activeTabKey }) => {
       }
     }
   }, [activeTabKey]);
-
-  const [sidebarVisible, setSidebarVisible] = useState(false);
-  const [routes] = useState(
-    tabs.map((tab) => ({ key: tab.key, title: tab.title }))
-  );
-  const sidebarAnimation = useRef(new Animated.Value(-300)).current; // Start off-screen
 
   const renderScene = ({ route }) => {
     const tab = tabs.find((t) => t.key === route.key);
@@ -55,12 +57,14 @@ const SidebarTabView = ({ tabs, activeTabKey }) => {
 
   const handleTabPress = (i) => {
     setIndex(i);
-    toggleSidebar(); // Close sidebar after selecting a tab
+    toggleSidebar();
   };
 
-  const renderTabBar = (props) => (
+  const { userToken, isLoading } = useAuth();
+
+  const renderTabBar = () => (
     <View style={styles.tabBarContainer}>
-      {props.navigationState.routes.map((route, i) => (
+      {routes.map((route, i) => (
         <TouchableOpacity
           key={route.key}
           style={[styles.tabItem, i === index && styles.activeTab]}
@@ -83,7 +87,7 @@ const SidebarTabView = ({ tabs, activeTabKey }) => {
           <Text style={styles.menuButtonText}>☰</Text>
         </TouchableOpacity>
 
-        {/* Current Tab Content */}
+        {/* Tab Content */}
         <View style={{ flex: 1 }}>{renderScene({ route: routes[index] })}</View>
       </View>
 
@@ -95,25 +99,34 @@ const SidebarTabView = ({ tabs, activeTabKey }) => {
             { transform: [{ translateX: sidebarAnimation }] },
           ]}
         >
-          <View style={styles.welcomeContainer}>
+          {/* Top Welcome + Profile */}
+          <View style={styles.sidebarTop}>
             <AppText style={styles.welcomeText} fontFamily="allura">
               Panchpokhari{" "}
               <AppText style={styles.welcomeHighlight}>Tourism</AppText>
             </AppText>
           </View>
+
+          {/* Menu Header */}
           <View style={styles.sidebarHeader}>
             <Text style={styles.sidebarTitle}>Menu</Text>
             <TouchableOpacity onPress={toggleSidebar}>
               <Text style={styles.closeButton}>×</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView style={styles.tabBarScroll}>
-            {renderTabBar({ navigationState: { routes, index } })}
-          </ScrollView>
+
+          {!isLoading && userToken && (
+            <View style={styles.profileContainer}>
+              <UserProfile />
+            </View>
+          )}
+          {/* Tab List */}
+          <ScrollView style={styles.tabBarScroll}>{renderTabBar()}</ScrollView>
+
         </Animated.View>
       )}
 
-      {/* Overlay when sidebar is open */}
+      {/* Overlay */}
       {sidebarVisible && (
         <TouchableOpacity
           style={styles.overlay}
@@ -150,9 +163,8 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     bottom: 0,
-    width: 250,
+    width: 270,
     backgroundColor: "#fff",
-    alignContent: "center",
     zIndex: 20,
     borderRightWidth: 1,
     borderRightColor: "#e0e0e0",
@@ -162,19 +174,25 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  welcomeContainer: {
-    marginTop: 50,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 8,
+  sidebarTop: {
+    paddingVertical: 25,
+    paddingHorizontal: 15,
+    borderBottomColor: "#ddd",
+    borderBottomWidth: 1,
+    backgroundColor: "#f9f9f9",
   },
   welcomeText: {
+    fontSize: 24,
+    textAlign: "center",
     color: "#FFA500",
-    fontSize: 28,
   },
   welcomeHighlight: {
     color: "#FF0000",
     fontStyle: "italic",
+  },
+  profileContainer: {
+    marginTop: 15,
+    alignSelf: "center",
   },
   sidebarHeader: {
     flexDirection: "row",
@@ -187,10 +205,12 @@ const styles = StyleSheet.create({
   sidebarTitle: {
     fontSize: 18,
     fontWeight: "bold",
+    color: "#333",
   },
   closeButton: {
     fontSize: 24,
     paddingHorizontal: 10,
+    color: "#888",
   },
   tabBarContainer: {
     paddingVertical: 8,

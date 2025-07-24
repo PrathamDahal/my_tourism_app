@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -96,7 +96,6 @@ const TravelPackages = () => {
     return visibleStays;
   };
 
-  const itemWidth = windowWidth / imagesPerSlide;
 
   return (
     <View style={styles.container}>

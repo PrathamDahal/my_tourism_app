@@ -1,4 +1,3 @@
-import React from "react";
 import {
   View,
   Text,
@@ -15,10 +14,21 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import { useNavigation } from "@react-navigation/native";
 import { useRegisterUserMutation } from "../../services/registerApi";
+import { Modal, FlatList } from "react-native";
+import { AntDesign } from "@expo/vector-icons";
+import { useState } from "react";
 
 const RegisterScreen = () => {
   const navigation = useNavigation();
   const [registerUser, { isLoading }] = useRegisterUserMutation();
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const roleOptions = [
+    { label: "Normal", value: "normal" },
+    { label: "Admin", value: "admin" },
+    { label: "Seller", value: "seller" },
+    { label: "Host", value: "host" },
+    { label: "Travel Agency", value: "travel agency" },
+  ];
 
   const validationSchema = Yup.object().shape({
     firstName: Yup.string().required("First name is required"),
@@ -82,6 +92,56 @@ const RegisterScreen = () => {
     </View>
   );
 
+  const renderRoleSelector = () => (
+    <View style={styles.field}>
+      <Text style={styles.label}>Role*</Text>
+      <TouchableOpacity
+        style={[
+          styles.dropdownButton,
+          formik.touched.role && formik.errors.role && styles.errorInput,
+        ]}
+        onPress={() => setShowRoleModal(true)}
+      >
+        <Text style={{ color: formik.values.role ? "#000" : "#aaa" }}>
+          {formik.values.role
+            ? roleOptions.find((r) => r.value === formik.values.role)?.label
+            : "Select your role"}
+        </Text>
+        <AntDesign name="down" size={16} color="#888" />
+      </TouchableOpacity>
+
+      {formik.touched.role && formik.errors.role && (
+        <Text style={styles.errorText}>{formik.errors.role}</Text>
+      )}
+
+      {/* Dropdown Modal */}
+      <Modal visible={showRoleModal} transparent animationType="fade">
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          onPress={() => setShowRoleModal(false)}
+        >
+          <View style={styles.modalContent}>
+            <FlatList
+              data={roleOptions}
+              keyExtractor={(item) => item.value}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.modalItem}
+                  onPress={() => {
+                    formik.setFieldValue("role", item.value);
+                    setShowRoleModal(false);
+                  }}
+                >
+                  <Text>{item.label}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </View>
+  );
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -124,7 +184,7 @@ const RegisterScreen = () => {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>User Role</Text>
-          {renderField("Role* (e.g. admin, host)", "role")}
+          {renderRoleSelector()}
         </View>
 
         <TouchableOpacity
@@ -243,5 +303,34 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "700",
     fontSize: 16,
+  },
+  dropdownButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    height: 45,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    backgroundColor: "#fff",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    padding: 15,
+    borderRadius: 8,
+    width: "80%",
+    maxHeight: "60%",
+  },
+  modalItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
   },
 });

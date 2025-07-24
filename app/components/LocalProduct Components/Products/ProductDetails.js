@@ -16,14 +16,13 @@ import { useGetProductBySlugQuery } from "../../../services/productApi";
 import { useAddToCartMutation } from "../../../services/cartApi";
 import RatingStars from "./../../../custom/RatingStars";
 import { customerFeedback } from "../../../data/CustomerFeedback";
-import { AuthContext } from "../../../context/AuthContext";
+import { API_BASE_URL } from "../../../../config";
 
 const { width } = Dimensions.get("window");
 
 const ProductDetails = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  const { user } = useContext(AuthContext);
   const { slug } = route.params || {};
   const [quantity, setQuantity] = useState(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -48,14 +47,6 @@ const ProductDetails = () => {
   };
 
   const handleAddToCartClick = async () => {
-    if (!user) {
-      navigation.navigate("Auth", {
-        screen: "Login",
-        params: { from: "cart" },
-      });
-      return;
-    }
-
     if (product.stock && quantity > product.stock) {
       setErrorMessage(
         `Cannot add more than available stock (${product.stock})`
@@ -66,7 +57,7 @@ const ProductDetails = () => {
 
     try {
       await addToCart({ productId: product._id, quantity }).unwrap();
-      navigation.navigate("MyCart");
+      navigation.navigate("Auth", { screen: "MyCart" });
     } catch (err) {
       setErrorMessage("Failed to add item to cart");
       setShowErrorToast(true);
@@ -92,7 +83,7 @@ const ProductDetails = () => {
   const renderThumbnail = ({ item, index }) => (
     <TouchableOpacity onPress={() => setSelectedImageIndex(index)}>
       <Image
-        source={{ uri: item }}
+        source={{ uri: `${API_BASE_URL}/${item}` }}
         style={[
           styles.thumbnail,
           index === selectedImageIndex && styles.selectedThumbnail,
@@ -125,7 +116,7 @@ const ProductDetails = () => {
 
           {mainImage && (
             <Image
-              source={{ uri: mainImage }}
+              source={{ uri: `${API_BASE_URL}/${mainImage}` }}
               style={styles.mainImage}
               resizeMode="contain"
             />

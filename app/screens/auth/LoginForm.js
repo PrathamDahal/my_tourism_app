@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import {
   View,
   Text,
@@ -10,21 +10,23 @@ import {
   Alert,
   ScrollView,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
-import ForgetPasswordModal from "../../custom/ForgetPasswordModal"; // Make sure this modal is React Native compatible
 import { useLoginMutation } from "../../services/auth/authApiSlice";
+import ForgetPasswordModal from "../../custom/ForgetPasswordModal"; // Make sure this modal is React Native compatible
 import { useDispatch } from "react-redux";
 import { setCredentials } from "../../features/authSlice";
 import { Feather } from "@expo/vector-icons";
+import { useAuth } from "./../../context/AuthContext";
 
 const LoginForm = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [login, { isLoading, isError, error }] = useLoginMutation();
+
+  const { login: contextLogin } = useAuth();
+  const [login, { isLoading, isError }] = useLoginMutation();
+
   const navigation = useNavigation();
   const dispatch = useDispatch();
 
@@ -32,29 +34,20 @@ const LoginForm = () => {
   const closeModal = () => setShowModal(false);
 
   const handleLogin = async () => {
-    if (!username || !password) {
-      Alert.alert("Validation", "Please enter username and password");
-      return;
-    }
     try {
-      const credentials = { username, password };
-      const { accessToken, refreshToken } = await login(credentials).unwrap();
+      const response = await login({ username, password }).unwrap();
 
-      dispatch(setCredentials({ accessToken, refreshToken }));
+      const { accessToken, refreshToken, user } = response;
 
-      if (rememberMe) {
-        await AsyncStorage.setItem("accessToken", accessToken);
-        await AsyncStorage.setItem("refreshToken", refreshToken);
-      }
+      contextLogin(user, { accessToken, refreshToken });
 
-      // Navigate to the home or main screen after login
       navigation.reset({
         index: 0,
-        routes: [{ name: "App" }], 
+        routes: [{ name: "App" }],
       });
     } catch (err) {
-      Alert.alert("Login Failed", err?.data?.message || "Please try again.");
-      console.error("Login failed:", err);
+      console.log("Login failed:", err);
+      Alert.alert("Login failed", "Please check your credentials");
     }
   };
 
@@ -111,14 +104,6 @@ const LoginForm = () => {
       </View>
 
       <View style={styles.row}>
-        <TouchableOpacity
-          onPress={() => setRememberMe(!rememberMe)}
-          style={styles.checkboxContainer}
-        >
-          <View style={[styles.checkbox, rememberMe && styles.checkedBox]} />
-          <Text style={styles.checkboxLabel}>Remember me</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity onPress={openModal}>
           <Text style={styles.forgotPasswordText}>Forget Password?</Text>
         </TouchableOpacity>
@@ -168,8 +153,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   image: {
-    width: 150,
-    height: 40,
+    width: 300,
+    height: 20,
     marginBottom: 20,
   },
   inputGroup: {
@@ -259,7 +244,7 @@ const styles = StyleSheet.create({
     borderColor: "#D1D5DB",
     borderRadius: 10,
     paddingHorizontal: 16,
-    paddingRight: 44, 
+    paddingRight: 44,
     paddingVertical: 12,
     fontSize: 16,
     backgroundColor: "#fff",

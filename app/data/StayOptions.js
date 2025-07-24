@@ -19,6 +19,8 @@ export const stays = [
       location: "Thangpal, Bhotang",
       contact: "9812345678",
       price: 3000,
+      rating: 4.4,
+      tags:["luxury","ranged prices","balcony view"],
       image: [
         {
           id: 1,
@@ -45,6 +47,8 @@ export const stays = [
       location: "Bhotang, Thangpal",
       contact: "9812345678",
       price: 1499,
+      rating: 3.0,
+      tags:["villa","group stay","luxury","good view"],
       image: [
         {
           id: 1,
@@ -71,6 +75,8 @@ export const stays = [
       location: "Tsegro, Thangpal",
       contact: "9812345678",
       price: 1000,
+      rating: 2.8,
+      tags:["homestay","cheaper","affordable"],
       image: [
         {
           id: 1,
@@ -93,10 +99,12 @@ export const stays = [
     {
       id: 3,
       type: "Hotel",
-      title: "Lake Side Homestay",
+      title: "Road Side Homestay",
       location: "Tsegro, Thangpal",
       contact: "9812345678",
       price: 1799,
+      rating: 3.4,
+      tags:["highway accessible","afforadable","lower price"],
       image: [
         {
           id: 1,
@@ -123,6 +131,8 @@ export const stays = [
       location: "Tsegro, Thangpal",
       contact: "9812345678",
       price: 1799,
+      rating: 4.4,
+      tags:["Parking","lake side","boating","great view"],
       image: [
         {
           id: 1,

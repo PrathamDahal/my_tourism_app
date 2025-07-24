@@ -6,12 +6,27 @@ import {
   ScrollView,
   Image,
   FlatList,
+  TextInput,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { destinations } from "../../../data/DestinationCarousel";
 import { useNavigation } from "@react-navigation/native";
+import { useState } from "react";
 
 const WhereToGo = () => {
   const navigation = useNavigation();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const filteredDestinations = destinations.filter((item) =>
+    item.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleSuggestionSelect = (value) => {
+    setSearchQuery(value);
+    setShowSuggestions(false);
+  };
+
   const renderDestinationCard = ({ item }) => (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>{item.title}</Text>
@@ -43,8 +58,39 @@ const WhereToGo = () => {
     <View style={styles.container}>
       <Text style={styles.title}>Where To Go</Text>
 
+      <TextInput
+        placeholder="Search destinations..."
+        value={searchQuery}
+        onChangeText={(text) => {
+          setSearchQuery(text);
+          setShowSuggestions(true);
+        }}
+        style={styles.searchInput}
+      />
+
+      {showSuggestions && searchQuery.length > 0 && (
+        <View style={styles.suggestionsContainer}>
+          {filteredDestinations.length > 0 ? (
+            filteredDestinations.slice(0, 5).map((item) => (
+              <TouchableWithoutFeedback
+                key={item.id}
+                onPress={() => handleSuggestionSelect(item.title)}
+              >
+                <View style={styles.suggestionItem}>
+                  <Text>{item.title}</Text>
+                </View>
+              </TouchableWithoutFeedback>
+            ))
+          ) : (
+            <View style={styles.suggestionItem}>
+              <Text>No matches found</Text>
+            </View>
+          )}
+        </View>
+      )}
+
       <FlatList
-        data={destinations}
+        data={filteredDestinations}
         renderItem={renderDestinationCard}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContainer}
@@ -62,7 +108,31 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: "bold",
-    marginBottom: 20,
+    marginBottom: 10,
+  },
+  searchInput: {
+    height: 45,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+    backgroundColor: "#fff",
+  },
+  suggestionsContainer: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    marginBottom: 10,
+    paddingVertical: 4,
+    maxHeight: 150,
+  },
+  suggestionItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
   },
   listContainer: {
     paddingBottom: 20,
@@ -104,19 +174,6 @@ const styles = StyleSheet.create({
   cardButtonText: {
     color: "white",
     fontWeight: "500",
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  button: {
-    padding: 15,
-    backgroundColor: "#f0f0f0",
-    borderRadius: 5,
-    width: "48%",
-    alignItems: "center",
   },
 });
 

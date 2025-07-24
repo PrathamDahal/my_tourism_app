@@ -1,20 +1,43 @@
-import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { stayOptions } from "../../data/StayOptions";
 
-const StayOptions = () => {
+const StayOptions = ({ onSelectType }) => {
+  const [selectedType, setSelectedType] = useState("All");
+
+  const handleSelect = (type) => {
+    setSelectedType(type);
+    if (onSelectType) {
+      onSelectType(type); // pass selected type back to parent
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.optionsContainer}>
         {stayOptions.map((option, index) => (
           <View key={index} style={styles.optionItem}>
             <TouchableOpacity
-              style={[styles.iconButton, { backgroundColor: option.color }]}
+              onPress={() => handleSelect(option.title)}
+              style={[
+                styles.iconButton,
+                {
+                  backgroundColor:
+                    selectedType === option.title ? "#111827" : option.color,
+                },
+              ]}
               activeOpacity={0.7}
             >
               <Text style={styles.iconText}>{option.icon()}</Text>
             </TouchableOpacity>
-            <Text style={styles.optionTitle}>{option.title}</Text>
+            <Text
+              style={[
+                styles.optionTitle,
+                selectedType === option.title && { fontWeight: "bold" },
+              ]}
+            >
+              {option.title}
+            </Text>
           </View>
         ))}
       </View>
@@ -37,7 +60,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   optionItem: {
-    width: "25%",             // 4 items per row
+    width: "25%",
     padding: 8,
     alignItems: "center",
   },

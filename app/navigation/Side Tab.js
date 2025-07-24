@@ -9,7 +9,6 @@ import RegisterScreen from "../screens/register/SignUp";
 import React from "react";
 
 const SideTab = ({route}) => {
-  const [ setActiveTabKey ] = React.useState("Home");
   const initialTab = route.params?.initialTab || "Home";
 
   const tabs = [

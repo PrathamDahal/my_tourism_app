@@ -1,17 +1,18 @@
-import React, { useContext } from 'react';
 import { View, Text, Button } from 'react-native';
-import { AuthContext } from '../context/AuthContext';
+import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../context/AuthContext';
 
 const ProtectedRoute = ({ children }) => {
-  const { user } = useContext(AuthContext);
+  const { userToken } = useAuth();
+  const navigation = useNavigation();
 
-  if (!user) {
+  if (!userToken) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text>Please login to access this page</Text>
         <Button 
           title="Go to Login" 
-          onPress={() => navigation.navigate('Account', { screen: 'Login' })}
+          onPress={() => navigation.navigate('App', { screen: 'Login' })}
         />
       </View>
     );

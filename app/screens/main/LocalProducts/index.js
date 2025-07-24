@@ -11,6 +11,8 @@ import {
 import { useGetCategoriesQuery } from "../../../services/categoryApi";
 import { useGetProductsQuery } from "../../../services/productApi";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useState } from "react";
+import { API_BASE_URL } from "../../../../config";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - 40) / 2; // Calculate width for 2-column grid with padding
@@ -31,6 +33,11 @@ const LocalProducts = ({ navigation }) => {
     isError: isProductsError,
     error: productsError,
   } = useGetProductsQuery();
+
+  const [showAll, setShowAll] = useState(false);
+
+  const visibleCategories = showAll ? categories : categories?.slice(0, 4);
+  const shouldShowSeeMore = categories?.length > 4;
 
   if (isCategoriesLoading || isProductsLoading) {
     return (
@@ -71,8 +78,8 @@ const LocalProducts = ({ navigation }) => {
       >
         <Image
           source={
-            typeof product?.imageUrl === "string" && product?.imageUrl.trim()
-              ? { uri: product?.imageUrl }
+            typeof product?.images?.[0] === "string" && product?.images[0].trim()
+              ? {uri: `${API_BASE_URL}/${product.images[0]}`}
               : require("../../../../assets/T-App-icon.png")
           }
           style={styles.productImage}
@@ -100,7 +107,7 @@ const LocalProducts = ({ navigation }) => {
         <Text style={styles.header}>Categories</Text>
 
         <View style={styles.categoriesContainer}>
-          {categories?.map((category) => (
+          {visibleCategories?.map((category) => (
             <TouchableOpacity
               key={category._id}
               style={styles.categoryButton}
@@ -115,6 +122,12 @@ const LocalProducts = ({ navigation }) => {
             </TouchableOpacity>
           ))}
         </View>
+
+        {shouldShowSeeMore && !showAll && (
+          <TouchableOpacity onPress={() => setShowAll(true)}>
+            <Text style={styles.seeMoreText}>See more...</Text>
+          </TouchableOpacity>
+        )}
 
         <Text style={styles.sectionHeader}>Featured Products</Text>
 
@@ -174,17 +187,18 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  categoryImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 8,
-  },
   categoryButtonText: {
     fontSize: 14,
     fontWeight: "500",
     color: "#000",
     textAlign: "center",
+  },
+  seeMoreText: {
+    color: "#007bff",
+    fontSize: 14,
+    textAlign: "right",
+    marginBottom: 10,
+    marginRight: 5,
   },
   productsGrid: {
     flexDirection: "row",

@@ -1,26 +1,24 @@
-import { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-} from 'react-native';
-import Slider from '@react-native-community/slider';
-import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import products from './../../data/products';
+} from "react-native";
+import MultiSlider from "@ptomasroos/react-native-multi-slider";
+import FontAwesome from "react-native-vector-icons/FontAwesome";
+import MaterialIcons from "react-native-vector-icons/MaterialIcons";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 
 const FilterComponent = ({
-  subcategories,
   allTags,
   filters,
   setFilters,
   handleFilterApply,
+  stays,
 }) => {
   const [openSections, setOpenSections] = useState({
-    categories: true,
     priceRange: true,
     rating: true,
     tags: true,
@@ -33,62 +31,36 @@ const FilterComponent = ({
     }));
   };
 
-  const minPrice = Math.min(...products.map((p) => p.price));
-  const maxPrice = Math.max(...products.map((p) => p.price));
+  const minPossiblePrice = Math.min(...stays.map((p) => p.price));
+  const maxPossiblePrice = Math.max(...stays.map((p) => p.price));
 
-  // Initialize price range if not set
-  const [priceRange, setPriceRange] = useState([minPrice, maxPrice]);
+  // Initialize with the current filter values or the full range
+  const [priceRange, setPriceRange] = useState(
+    filters.priceRange || [minPossiblePrice, maxPossiblePrice]
+  );
+
+  const handlePriceChange = (values) => {
+    setPriceRange(values);
+  };
+
+  const handlePriceChangeComplete = (values) => {
+    setFilters((prev) => ({
+      ...prev,
+      priceRange: values,
+    }));
+  };
+
+  // Format price with commas for thousands
+  const formatPrice = (price) => {
+    return `$${price.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+  };
 
   return (
     <ScrollView style={styles.container}>
-      {/* Categories Section */}
-      <View style={styles.section}>
-        <TouchableOpacity
-          onPress={() => toggleSection('categories')}
-          style={styles.sectionHeader}
-        >
-          <Text style={styles.sectionTitle}>Categories</Text>
-          <MaterialIcons
-            name="keyboard-arrow-down"
-            size={24}
-            style={{
-              transform: [{ rotate: openSections.categories ? '180deg' : '0deg' }],
-            }}
-          />
-        </TouchableOpacity>
-        {openSections.categories && (
-          <View style={styles.sectionContent}>
-            {subcategories.map((subcat) => (
-              <TouchableOpacity
-                key={subcat}
-                style={styles.radioRow}
-                onPress={() =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    subcategory: prev.subcategory === subcat ? '' : subcat,
-                  }))
-                }
-              >
-                <MaterialCommunityIcons
-                  name={
-                    filters.subcategory === subcat
-                      ? 'radiobox-marked'
-                      : 'radiobox-blank'
-                  }
-                  size={20}
-                  color="#e53935"
-                />
-                <Text style={styles.radioLabel}>{subcat}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </View>
-
       {/* Price Range Section */}
       <View style={styles.section}>
         <TouchableOpacity
-          onPress={() => toggleSection('priceRange')}
+          onPress={() => toggleSection("priceRange")}
           style={styles.sectionHeader}
         >
           <Text style={styles.sectionTitle}>Price Range</Text>
@@ -96,31 +68,52 @@ const FilterComponent = ({
             name="keyboard-arrow-down"
             size={24}
             style={{
-              transform: [{ rotate: openSections.priceRange ? '180deg' : '0deg' }],
+              transform: [
+                { rotate: openSections.priceRange ? "180deg" : "0deg" },
+              ],
             }}
           />
         </TouchableOpacity>
         {openSections.priceRange && (
           <View style={styles.sectionContent}>
-            <Slider
-              minimumValue={minPrice}
-              maximumValue={maxPrice}
+            <View style={styles.priceDisplayContainer}>
+              <View style={styles.priceDisplay}>
+                <Text style={styles.priceLabel}>
+                  Min: {formatPrice(priceRange[0])}
+                </Text>
+              </View>
+              <View style={styles.priceDisplay}>
+                <Text style={styles.priceLabel}>
+                  Max: {formatPrice(priceRange[1])}
+                </Text>
+              </View>
+            </View>
+
+            <MultiSlider
+              values={priceRange}
+              sliderLength={300}
+              min={minPossiblePrice}
+              max={maxPossiblePrice}
               step={1}
-              value={priceRange[1]}
-              onValueChange={(value) => setPriceRange([minPrice, value])}
-              onSlidingComplete={(value) => 
-                setFilters(prev => ({
-                  ...prev,
-                  priceRange: [minPrice, value]
-                }))
-              }
-              minimumTrackTintColor="#1e90ff"
-              maximumTrackTintColor="#ddd"
-              thumbTintColor="#1e90ff"
+              allowOverlap={false}
+              snapped
+              minMarkerOverlapDistance={40}
+              onValuesChange={handlePriceChange}
+              onValuesChangeFinish={handlePriceChangeComplete}
+              selectedStyle={styles.selectedTrack}
+              unselectedStyle={styles.unselectedTrack}
+              markerStyle={styles.marker}
+              trackStyle={styles.track}
+              containerStyle={styles.sliderContainer}
             />
+
             <View style={styles.priceRangeLabels}>
-              <Text style={styles.priceLabel}>${minPrice}</Text>
-              <Text style={styles.priceLabel}>${priceRange[1]}</Text>
+              <Text style={styles.priceLimitLabel}>
+                {formatPrice(minPossiblePrice)}
+              </Text>
+              <Text style={styles.priceLimitLabel}>
+                {formatPrice(maxPossiblePrice)}
+              </Text>
             </View>
           </View>
         )}
@@ -129,7 +122,7 @@ const FilterComponent = ({
       {/* Rating Section */}
       <View style={styles.section}>
         <TouchableOpacity
-          onPress={() => toggleSection('rating')}
+          onPress={() => toggleSection("rating")}
           style={styles.sectionHeader}
         >
           <Text style={styles.sectionTitle}>Minimum Rating</Text>
@@ -137,7 +130,7 @@ const FilterComponent = ({
             name="keyboard-arrow-down"
             size={24}
             style={{
-              transform: [{ rotate: openSections.rating ? '180deg' : '0deg' }],
+              transform: [{ rotate: openSections.rating ? "180deg" : "0deg" }],
             }}
           />
         </TouchableOpacity>
@@ -157,8 +150,8 @@ const FilterComponent = ({
                 <MaterialCommunityIcons
                   name={
                     filters.minRating === rating
-                      ? 'checkbox-marked'
-                      : 'checkbox-blank-outline'
+                      ? "checkbox-marked"
+                      : "checkbox-blank-outline"
                   }
                   size={20}
                   color="#e53935"
@@ -169,7 +162,7 @@ const FilterComponent = ({
                       key={i}
                       name="star"
                       size={16}
-                      color={i < rating ? '#facc15' : '#e5e7eb'}
+                      color={i < rating ? "#facc15" : "#e5e7eb"}
                     />
                   ))}
                   <Text style={styles.ratingText}>{rating}.0 & up</Text>
@@ -183,7 +176,7 @@ const FilterComponent = ({
       {/* Tags Section */}
       <View style={styles.section}>
         <TouchableOpacity
-          onPress={() => toggleSection('tags')}
+          onPress={() => toggleSection("tags")}
           style={styles.sectionHeader}
         >
           <Text style={styles.sectionTitle}>Amenities</Text>
@@ -191,7 +184,7 @@ const FilterComponent = ({
             name="keyboard-arrow-down"
             size={24}
             style={{
-              transform: [{ rotate: openSections.tags ? '180deg' : '0deg' }],
+              transform: [{ rotate: openSections.tags ? "180deg" : "0deg" }],
             }}
           />
         </TouchableOpacity>
@@ -204,7 +197,9 @@ const FilterComponent = ({
                   key={tag}
                   style={[
                     styles.tagButton,
-                    isSelected ? styles.tagButtonSelected : styles.tagButtonUnselected,
+                    isSelected
+                      ? styles.tagButtonSelected
+                      : styles.tagButtonUnselected,
                   ]}
                   onPress={() =>
                     setFilters((prev) => ({
@@ -218,7 +213,9 @@ const FilterComponent = ({
                   <Text
                     style={[
                       styles.tagText,
-                      isSelected ? styles.tagTextSelected : styles.tagTextUnselected,
+                      isSelected
+                        ? styles.tagTextSelected
+                        : styles.tagTextUnselected,
                     ]}
                   >
                     {tag}
@@ -231,10 +228,7 @@ const FilterComponent = ({
       </View>
 
       {/* Apply Button */}
-      <TouchableOpacity
-        onPress={handleFilterApply}
-        style={styles.applyButton}
-      >
+      <TouchableOpacity onPress={handleFilterApply} style={styles.applyButton}>
         <Text style={styles.applyButtonText}>Apply Filters</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -244,64 +238,96 @@ const FilterComponent = ({
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   section: {
     marginBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: "#e5e7eb",
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 8,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
   },
   sectionContent: {
     paddingVertical: 12,
+    alignItems: "center",
   },
-  radioRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
+  priceDisplayContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginBottom: 16,
   },
-  radioLabel: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#4b5563',
-  },
-  priceRangeLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
+  priceDisplay: {
+    backgroundColor: "#f3f4f6",
+    padding: 8,
+    borderRadius: 8,
+    minWidth: 120,
+    alignItems: "center",
   },
   priceLabel: {
     fontSize: 14,
-    color: '#4b5563',
+    color: "#111827",
+    fontWeight: "500",
+  },
+  priceRangeLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginTop: 8,
+  },
+  priceLimitLabel: {
+    fontSize: 12,
+    color: "#6b7280",
+  },
+  selectedTrack: {
+    backgroundColor: "#1e90ff",
+  },
+  unselectedTrack: {
+    backgroundColor: "#ddd",
+  },
+  marker: {
+    backgroundColor: "#1e90ff",
+    height: 24,
+    width: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  track: {
+    height: 4,
+    borderRadius: 2,
+  },
+  sliderContainer: {
+    marginHorizontal: 16,
   },
   checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
+    width: "100%",
   },
   starsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginLeft: 8,
   },
   ratingText: {
     marginLeft: 4,
     fontSize: 14,
-    color: '#4b5563',
+    color: "#4b5563",
   },
   tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
   },
   tagButton: {
@@ -309,36 +335,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: "#e5e7eb",
   },
   tagButtonSelected: {
-    backgroundColor: '#e0f2fe',
-    borderColor: '#7dd3fc',
+    backgroundColor: "#e0f2fe",
+    borderColor: "#7dd3fc",
   },
   tagButtonUnselected: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: "#f9fafb",
   },
   tagText: {
     fontSize: 14,
   },
   tagTextSelected: {
-    color: '#0369a1',
-    fontWeight: '500',
+    color: "#0369a1",
+    fontWeight: "500",
   },
   tagTextUnselected: {
-    color: '#6b7280',
+    color: "#6b7280",
   },
   applyButton: {
-    backgroundColor: '#e53935',
+    backgroundColor: "#e53935",
     paddingVertical: 14,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 16,
   },
   applyButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 

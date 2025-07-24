@@ -1,3 +1,4 @@
+import React from "react";
 import {
   View,
   Text,
@@ -9,25 +10,28 @@ import {
   RefreshControl,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { useGetProductsQuery } from "../../../services/productApi";
+import { useGetProductsByCategoryQuery } from "../../../services/productApi";
 import { API_BASE_URL } from "../../../../config";
 import { Ionicons } from "@expo/vector-icons";
 
-const ProductDisplay = () => {
+const CategoryProducts = ({ route }) => {
+  const { categoryId, categoryName } = route.params;
   const navigation = useNavigation();
+
   const {
-    data: products,
-    isLoading: isProductsLoading,
-    isError: isProductsError,
+    data: product,
+    isLoading,
+    isError,
     refetch,
     isFetching,
-  } = useGetProductsQuery();
+  } = useGetProductsByCategoryQuery(categoryId);
 
-  const totalProducts = products?.totalProducts;
+  const products = product?.data || [];
+  const totalProducts = product?.totalProducts;
 
   const renderProductCard = (product) => (
     <TouchableOpacity
-      key={product.id}
+      key={product._id}
       style={styles.productCard}
       onPress={() =>
         navigation.navigate("ProductDetails", {
@@ -49,12 +53,12 @@ const ProductDisplay = () => {
         <Text style={styles.productName} numberOfLines={2}>
           {product.name}
         </Text>
-        <Text style={styles.productPrice}>${product.price.toFixed(2)}</Text>
+        <Text style={styles.productPrice}>Rs. {product.price}</Text>
       </View>
     </TouchableOpacity>
   );
 
-  if (isProductsLoading) {
+  if (isLoading) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#2a52be" />
@@ -62,7 +66,7 @@ const ProductDisplay = () => {
     );
   }
 
-  if (isProductsError) {
+  if (isError) {
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.errorText}>Error loading products</Text>
@@ -76,17 +80,19 @@ const ProductDisplay = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>All Products</Text>
+        <Text style={styles.categoryTitle}>{categoryName}</Text>
         <View style={styles.totalContainer}>
-          <Ionicons name="cube" size={18} color="#777" />
-          <Text style={styles.totalProductsText}>{totalProducts} Items</Text>
+          <Ionicons name="pricetags" size={18} color="#777" />
+          <Text style={styles.totalProductsText}>
+            {totalProducts} Products
+          </Text>
         </View>
       </View>
 
       <FlatList
-        data={products?.data}
+        data={products}
         renderItem={({ item }) => renderProductCard(item)}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item._id}
         numColumns={2}
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.listContent}
@@ -112,17 +118,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f9f9f9",
     paddingHorizontal: 10,
-    paddingTop: 34,
+    paddingTop: 36,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 18,
+    marginTop: 10,
     paddingHorizontal: 8,
-    marginBottom: 12,
-    marginTop: 10
   },
-  title: {
+  categoryTitle: {
     fontSize: 22,
     fontWeight: "bold",
     color: "#2a2a2a",
@@ -152,7 +158,7 @@ const styles = StyleSheet.create({
   },
   productCard: {
     width: "48%",
-    backgroundColor: "#fff",
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     overflow: "hidden",
     shadowColor: "#000",
@@ -206,4 +212,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ProductDisplay;
+export default CategoryProducts;
