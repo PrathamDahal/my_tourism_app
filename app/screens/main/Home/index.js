@@ -40,7 +40,7 @@ const Home = ({ navigation }) => {
   return (
     <>
       <HeroSection
-        image={require("../../../../assets/Images/wallpaperflare.jpg")}
+        image={require("../../../../assets/Images/Home/wallpaperflare.jpg")}
         title="Discover Our Community"
         description="Find the best local experiences and hidden gems"
         buttonText="Explore Now"
@@ -49,7 +49,7 @@ const Home = ({ navigation }) => {
         }
       />
       <ImageBackground
-        source={require("../../../../assets/Images/waves-yellow.jpg")}
+        source={require("../../../../assets/Images/Home/waves-yellow.jpg")}
         style={styles.backgroundImage}
         imageStyle={{ opacity: 1 }}
       >

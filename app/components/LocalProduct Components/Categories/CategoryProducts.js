@@ -1,4 +1,4 @@
-import React from "react";
+import { TextInput } from "react-native";
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import { useNavigation } from "@react-navigation/native";
 import { useGetProductsByCategoryQuery } from "../../../services/productApi";
 import { API_BASE_URL } from "../../../../config";
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
+import FilterProductComponent from "./FilterProducts";
 
 const CategoryProducts = ({ route }) => {
   const { categoryId, categoryName } = route.params;
@@ -28,6 +30,13 @@ const CategoryProducts = ({ route }) => {
 
   const products = product?.data || [];
   const totalProducts = product?.totalProducts;
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+
+  const finalFilteredProducts = filteredProducts?.filter((item) =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const renderProductCard = (product) => (
     <TouchableOpacity
@@ -77,25 +86,126 @@ const CategoryProducts = ({ route }) => {
     );
   }
 
+  useEffect(() => {
+    if (products?.length) {
+      setFilteredProducts(products);
+    }
+  }, [products]);
+
+  const handleApplyFilters = (filters) => {
+    const { minPrice, maxPrice, minRating, tags } = filters;
+
+    const newFiltered = products.filter((product) => {
+      const priceMatch =
+        (!minPrice || product.price >= minPrice) &&
+        (!maxPrice || product.price <= maxPrice);
+
+      const ratingMatch =
+        !minRating || (product.rating && product.rating >= minRating);
+
+      let parsedTags = [];
+      try {
+        parsedTags = JSON.parse(product.tags?.[0] || "[]");
+      } catch (e) {
+        parsedTags = [];
+      }
+      const tagMatch =
+        tags.length === 0 || tags.some((tag) => parsedTags.includes(tag));
+
+      return priceMatch && ratingMatch && tagMatch;
+    });
+
+    setFilteredProducts(newFiltered);
+  };
+
+  const uniqueTags = [
+    ...new Set(
+      products.flatMap((p) => {
+        try {
+          return JSON.parse(p.tags?.[0] || "[]");
+        } catch (e) {
+          return [];
+        }
+      })
+    ),
+  ];
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.categoryTitle}>{categoryName}</Text>
         <View style={styles.totalContainer}>
           <Ionicons name="pricetags" size={18} color="#777" />
-          <Text style={styles.totalProductsText}>
-            {totalProducts} Products
-          </Text>
+          <Text style={styles.totalProductsText}>{totalProducts} Products</Text>
         </View>
       </View>
 
+      <TextInput
+        placeholder="Search products..."
+        value={searchQuery}
+        onChangeText={(text) => {
+          setSearchQuery(text);
+          setShowSuggestions(true);
+        }}
+        style={{
+          height: 45,
+          borderColor: "#ccc",
+          borderWidth: 1,
+          borderRadius: 8,
+          paddingHorizontal: 12,
+          marginBottom: 10,
+          backgroundColor: "#fff",
+        }}
+      />
+      {showSuggestions && searchQuery.length > 0 && (
+        <View
+          style={{
+            backgroundColor: "#fff",
+            borderWidth: 1,
+            borderColor: "#ccc",
+            borderRadius: 8,
+            marginBottom: 10,
+            paddingVertical: 4,
+            maxHeight: 150,
+          }}
+        >
+          {filteredProducts.length > 0 ? (
+            filteredProducts.slice(0, 5).map((item) => (
+              <TouchableOpacity
+                key={item._id}
+                onPress={() => {
+                  setSearchQuery(item.name);
+                  setShowSuggestions(false);
+                }}
+              >
+                <View style={{ paddingVertical: 8, paddingHorizontal: 12 }}>
+                  <Text>{item.name}</Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={{ padding: 12 }}>
+              <Text>No matches found</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      <FilterProductComponent
+        onApplyFilters={handleApplyFilters}
+        availableTags={uniqueTags}
+      />
+
       <FlatList
-        data={products}
+        data={finalFilteredProducts}
         renderItem={({ item }) => renderProductCard(item)}
-        keyExtractor={(item) => item._id}
+        keyExtractor={(item, index) =>
+          item?._id?.toString() ?? index.toString()
+        }
         numColumns={2}
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.listContent}
+        onScrollBeginDrag={() => setShowSuggestions(false)}
         refreshControl={
           <RefreshControl
             refreshing={isFetching}

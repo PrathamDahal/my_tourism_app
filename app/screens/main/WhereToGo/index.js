@@ -49,7 +49,7 @@ const WhereToGo = () => {
           navigation.navigate("DestinationDetails", { destination: item })
         }
       >
-        <Text style={styles.cardButtonText}>View Details</Text>
+        <Text style={styles.cardButtonText}>Explore</Text>
       </TouchableOpacity>
     </View>
   );
@@ -173,7 +173,10 @@ const styles = StyleSheet.create({
   },
   cardButtonText: {
     color: "white",
-    fontWeight: "500",
+    fontWeight: "600",
+    fontSize: 18,
+    letterSpacing: 2,
+    fontFamily: ''
   },
 });
 

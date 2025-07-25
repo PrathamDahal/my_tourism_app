@@ -52,18 +52,14 @@ const UserProfile = () => {
           source={typeof imageUri === "string" ? { uri: imageUri } : imageUri}
           style={styles.avatar}
         />
-        <View style={styles.userInfo}>
-          <Text style={styles.username}>{username}</Text>
-          <Text style={styles.email}>{email}</Text>
-        </View>
-        <Icon
+        {/* <Icon
           name="angle-down"
           size={18}
           color="#6B7280"
           style={{
             transform: [{ rotate: isDropdownOpen ? "180deg" : "0deg" }],
           }}
-        />
+        /> */}
       </TouchableOpacity>
 
       <Modal transparent visible={isDropdownOpen} animationType="fade">
@@ -111,7 +107,7 @@ const UserProfile = () => {
                       label="Dashboard"
                       onPress={() => {
                         setDropdownOpen(false);
-                        navigation.navigate("Dashboard");
+                        navigation.navigate("Auth", { screen: "Dashboard" });
                       }}
                     />
                   )}
@@ -148,11 +144,13 @@ const styles = StyleSheet.create({
   profileButton: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: 'space-evenly',
   },
   avatar: {
-    width: 40,
-    height: 40,
+    width: 45,
+    height: 45,
     borderRadius: 20,
+    marginHorizontal: 4
   },
   userInfo: {
     marginLeft: 10,

@@ -17,31 +17,31 @@ const FeaturedActivities = () => {
   // Image data with descriptions
   const slides = [
     {
-      source: require("../../../../assets/Images/Frame 40.png"),
+      source: require("../../../../assets/Images/Home/Frame 40.png"),
       description: "Explore the beautiful landscapes of Panchpokhari",
     },
     {
-      source: require("../../../../assets/Images/Frame 39.png"),
+      source: require("../../../../assets/Images/Home/Frame 39.png"),
       description: "Experience local culture and traditions",
     },
     {
-      source: require("../../../../assets/Images/Frame 35.png"),
+      source: require("../../../../assets/Images/Home/Frame 35.png"),
       description: "Adventure activities for thrill seekers",
     },
     {
-      source: require("../../../../assets/Images/Frame 34.png"),
+      source: require("../../../../assets/Images/Home/Frame 34.png"),
       description: "Serene lakes and breathtaking views",
     },
     {
-      source: require("../../../../assets/Images/Frame 36.png"),
+      source: require("../../../../assets/Images/Home/Frame 36.png"),
       description: "Wildlife encounters in natural habitats",
     },
     {
-      source: require("../../../../assets/Images/Frame 38.png"),
+      source: require("../../../../assets/Images/Home/Frame 38.png"),
       description: "Traditional cuisine and local delicacies",
     },
     {
-      source: require("../../../../assets/Images/Frame 37.png"),
+      source: require("../../../../assets/Images/Home/Frame 37.png"),
       description: "Sunset views that will take your breath away",
     },
   ];

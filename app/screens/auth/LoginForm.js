@@ -43,7 +43,7 @@ const LoginForm = () => {
 
       navigation.reset({
         index: 0,
-        routes: [{ name: "App" }],
+        routes: [{ name: "MainStack" }],
       });
     } catch (err) {
       console.log("Login failed:", err);

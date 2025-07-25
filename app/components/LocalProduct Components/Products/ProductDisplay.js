@@ -7,11 +7,14 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  TextInput,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useGetProductsQuery } from "../../../services/productApi";
 import { API_BASE_URL } from "../../../../config";
 import { Ionicons } from "@expo/vector-icons";
+import { useState } from "react";
 
 const ProductDisplay = () => {
   const navigation = useNavigation();
@@ -24,10 +27,21 @@ const ProductDisplay = () => {
   } = useGetProductsQuery();
 
   const totalProducts = products?.totalProducts;
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const filteredProducts = products?.data?.filter((item) =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleSuggestionSelect = (value) => {
+    setSearchQuery(value);
+    setShowSuggestions(false);
+  };
 
   const renderProductCard = (product) => (
     <TouchableOpacity
-      key={product.id}
+      key={product._id}
       style={styles.productCard}
       onPress={() =>
         navigation.navigate("ProductDetails", {
@@ -83,13 +97,46 @@ const ProductDisplay = () => {
         </View>
       </View>
 
+      <TextInput
+        placeholder="Search destinations..."
+        value={searchQuery}
+        onChangeText={(text) => {
+          setSearchQuery(text);
+          setShowSuggestions(true);
+        }}
+        style={styles.searchInput}
+      />
+      {showSuggestions && searchQuery.length > 0 && (
+        <View style={styles.suggestionsContainer}>
+          {filteredProducts?.length > 0 ? (
+            filteredProducts.slice(0, 5).map((item) => (
+              <TouchableWithoutFeedback
+                key={item._id}
+                onPress={() => handleSuggestionSelect(item.name)}
+              >
+                <View style={styles.suggestionItem}>
+                  <Text>{item.name}</Text>
+                </View>
+              </TouchableWithoutFeedback>
+            ))
+          ) : (
+            <View style={styles.suggestionItem}>
+              <Text>No matches found</Text>
+            </View>
+          )}
+        </View>
+      )}
+
       <FlatList
-        data={products?.data}
+        data={filteredProducts}
         renderItem={({ item }) => renderProductCard(item)}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) =>
+          item?._id?.toString() ?? index.toString()
+        }
         numColumns={2}
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.listContent}
+        onScrollBeginDrag={() => setShowSuggestions(false)}
         refreshControl={
           <RefreshControl
             refreshing={isFetching}
@@ -120,12 +167,36 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 8,
     marginBottom: 12,
-    marginTop: 10
+    marginTop: 10,
   },
   title: {
     fontSize: 22,
     fontWeight: "bold",
     color: "#2a2a2a",
+  },
+  searchInput: {
+    height: 45,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+    backgroundColor: "#fff",
+  },
+  suggestionsContainer: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    marginBottom: 10,
+    paddingVertical: 4,
+    maxHeight: 150,
+  },
+  suggestionItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
   },
   totalContainer: {
     flexDirection: "row",

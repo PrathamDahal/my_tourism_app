@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, Button, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -6,7 +5,7 @@ const SelectionPage = () => {
   const navigation = useNavigation();
 
   const handleButtonPress = () => {
-    navigation.navigate('App');
+    navigation.navigate('MainStack');
   };
 
   return (

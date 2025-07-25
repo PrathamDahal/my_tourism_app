@@ -53,11 +53,11 @@ const ContactUs = () => {
 
           {/* Decorative images - you'll need to replace these with your actual image imports */}
           <Image
-            source={require('../../../../assets/Images/Ellipse 793.png')}
+            source={require('../../../../assets/Images/Contact/Ellipse 793.png')}
             style={styles.decorativeImage1}
           />
           <Image
-            source={require('../../../../assets/Images/Ellipse 794.png')}
+            source={require('../../../../assets/Images/Contact/Ellipse 794.png')}
             style={styles.decorativeImage2}
           />
         </View>

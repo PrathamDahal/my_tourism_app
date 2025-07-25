@@ -12,7 +12,7 @@ const ProtectedRoute = ({ children }) => {
         <Text>Please login to access this page</Text>
         <Button 
           title="Go to Login" 
-          onPress={() => navigation.navigate('App', { screen: 'Login' })}
+          onPress={() => navigation.navigate('MainMenu', { screen: 'Login' })}
         />
       </View>
     );
