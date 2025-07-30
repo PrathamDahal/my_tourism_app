@@ -14,7 +14,7 @@ const AuthStack = () => {
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="SignUp" component={SignUp} />
       <Stack.Screen
-        name="Dashboard"
+        name="DashboardStack"
         component={() => (
           <ProtectedRoute>
             <Dashboard />

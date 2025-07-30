@@ -14,6 +14,8 @@ import {
   useRemoveFromCartMutation,
   useUpdateCartMutation,
 } from "../../services/cartApi";
+import QrPurchaseModal from "../../components/Cart/OrderModal/QrOrderModal";
+import CODPurchaseModal from "../../components/Cart/OrderModal/CoDOrderModal";
 
 const MyCart = () => {
   const { data: cartData, isLoading, isError, refetch } = useGetCartQuery();
@@ -30,6 +32,8 @@ const MyCart = () => {
 
   const [products, setProducts] = useState([]);
   const [total, setTotal] = useState(0);
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
+  const [currentVendorCheckout, setCurrentVendorCheckout] = useState(null);
 
   const transformCartData = (apiData) => {
     if (!apiData || !Array.isArray(apiData.items)) {
@@ -177,6 +181,18 @@ const MyCart = () => {
     };
   };
 
+  const getCurrentVendorItems = () => {
+    if (!currentVendorCheckout) return [];
+    return currentVendorCheckout.items.filter((item) => item.checked);
+  };
+
+  const getCurrentVendorTotal = () => {
+    return getCurrentVendorItems().reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+  };
+
   // Update summary whenever products or shipping costs change
   useEffect(() => {
     const summary = calculateSummary();
@@ -208,11 +224,8 @@ const MyCart = () => {
       return;
     }
 
-    // Implement your checkout logic here
-    Alert.alert(
-      "Checkout Initiated",
-      `Checking out ${itemsToCheckout.length} items from ${vendor.vendor} with ${selectedPayment} payment`
-    );
+    setCurrentVendorCheckout(vendor);
+    setIsPurchaseModalOpen(true);
   };
 
   const hasVendorCheckedItems = (vendorIndex) => {
@@ -306,45 +319,56 @@ const MyCart = () => {
                       </View>
 
                       {/* Quantity controls */}
-                      <View style={styles.quantityContainer}>
-                        <TouchableOpacity
-                          style={[
-                            styles.quantityButton,
-                            item.quantity <= 1 && styles.disabledButton,
-                          ]}
-                          onPress={() =>
-                            updateQuantity(
-                              vendorIndex,
-                              itemIndex,
-                              item.quantity - 1
-                            )
-                          }
-                          disabled={item.quantity <= 1}
+                      <View style={{ marginBottom: 8 }}>
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            color: "#444",
+                            marginBottom: 4,
+                          }}
                         >
-                          <Text style={styles.quantityButtonText}>-</Text>
-                        </TouchableOpacity>
-
-                        <Text style={styles.quantityValue}>
-                          {item.quantity}
+                          Quantity: {item.quantity}
                         </Text>
+                        <View style={styles.quantityContainer}>
+                          <TouchableOpacity
+                            style={[
+                              styles.quantityButton,
+                              item.quantity <= 1 && styles.disabledButton,
+                            ]}
+                            onPress={() =>
+                              updateQuantity(
+                                vendorIndex,
+                                itemIndex,
+                                item.quantity - 1
+                              )
+                            }
+                            disabled={item.quantity <= 1}
+                          >
+                            <Text style={styles.quantityButtonText}>-</Text>
+                          </TouchableOpacity>
 
-                        <TouchableOpacity
-                          style={[
-                            styles.quantityButton,
-                            item.quantity >= item.stock &&
-                              styles.disabledButton,
-                          ]}
-                          onPress={() =>
-                            updateQuantity(
-                              vendorIndex,
-                              itemIndex,
-                              item.quantity + 1
-                            )
-                          }
-                          disabled={item.quantity >= item.stock}
-                        >
-                          <Text style={styles.quantityButtonText}>+</Text>
-                        </TouchableOpacity>
+                          <Text style={styles.quantityValue}>
+                            {item.quantity}
+                          </Text>
+
+                          <TouchableOpacity
+                            style={[
+                              styles.quantityButton,
+                              item.quantity >= item.stock &&
+                                styles.disabledButton,
+                            ]}
+                            onPress={() =>
+                              updateQuantity(
+                                vendorIndex,
+                                itemIndex,
+                                item.quantity + 1
+                              )
+                            }
+                            disabled={item.quantity >= item.stock}
+                          >
+                            <Text style={styles.quantityButtonText}>+</Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
 
                       <View style={styles.itemFooter}>
@@ -471,6 +495,27 @@ const MyCart = () => {
           </>
         )}
       </ScrollView>
+      {selectedPayment === "cod" ? (
+        <CODPurchaseModal
+          isOpen={isPurchaseModalOpen}
+          onClose={() => {
+            setIsPurchaseModalOpen(false);
+            setCurrentVendorCheckout(null);
+          }}
+          cartItems={getCurrentVendorItems()}
+          total={getCurrentVendorTotal()}
+        />
+      ) : (
+        <QrPurchaseModal
+          isOpen={isPurchaseModalOpen}
+          onClose={() => {
+            setIsPurchaseModalOpen(false);
+            setCurrentVendorCheckout(null);
+          }}
+          cartItems={getCurrentVendorItems()}
+          total={getCurrentVendorTotal()}
+        />
+      )}
     </View>
   );
 };

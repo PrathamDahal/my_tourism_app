@@ -15,7 +15,7 @@ export const authApiSlice = createApi({
         body: credentials,
       }),
       transformResponse: (response) => {
-        const { accessToken, refreshToken } = response.data;
+        const { accessToken, refreshToken } = response;
         return { accessToken, refreshToken };
       },
     }),
@@ -23,7 +23,7 @@ export const authApiSlice = createApi({
     // Refresh token mutation
     refreshToken: builder.mutation({
       query: () => ({
-        url: "/token/refreshToken",
+        url: "/auth/refresh",
         method: "POST",
       }),
       async onQueryStarted(_, { dispatch, queryFulfilled, getState }) {

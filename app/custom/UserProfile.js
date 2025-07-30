@@ -25,18 +25,33 @@ const UserProfile = () => {
   const navigation = useNavigation();
   const { logout } = useAuth();
   const { data, isLoading } = useFetchUserProfileQuery();
-  const userData = data?.data?.user;
+  const userData = data;
   const [isDropdownOpen, setDropdownOpen] = useState(false);
 
   const imageUri =
     userData?.images || require("../../assets/Images/default-avatar-image.jpg");
-  const username = userData?.username || "Guest";
+  const username = userData
+    ? `${userData.firstName} ${userData.lastName}`
+    : "Guest";
   const email = userData?.email || "example@email.com";
 
   const handleLogout = async () => {
     await logout();
     setDropdownOpen(false);
     navigation.navigate("Auth", { screen: "Login" });
+  };
+
+  const getDashboardLabel = (role) => {
+    switch (role) {
+      case "SELLER":
+        return "Seller Dashboard";
+      case "HOST":
+        return "Host Dashboard";
+      case "TRAVELAGENCY":
+        return "Travel Dashboard";
+      default:
+        return "Dashboard";
+    }
   };
 
   const toggleDropDown = () => setDropdownOpen(!isDropdownOpen);
@@ -99,7 +114,7 @@ const UserProfile = () => {
                       navigation.navigate("Auth", { screen: "MyCart" });
                     }}
                   />
-                  {["admin", "seller", "host", "travelAgency"].includes(
+                  {["SELLER", "HOST", "TRAVELAGENCY"].includes(
                     userData?.role
                   ) && (
                     <DropdownItem
@@ -107,7 +122,9 @@ const UserProfile = () => {
                       label="Dashboard"
                       onPress={() => {
                         setDropdownOpen(false);
-                        navigation.navigate("Auth", { screen: "Dashboard" });
+                        navigation.navigate("Auth", {
+                          screen: "DashboardStack",
+                        });
                       }}
                     />
                   )}
@@ -144,13 +161,13 @@ const styles = StyleSheet.create({
   profileButton: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: 'space-evenly',
+    justifyContent: "space-evenly",
   },
   avatar: {
     width: 45,
     height: 45,
     borderRadius: 20,
-    marginHorizontal: 4
+    marginHorizontal: 4,
   },
   userInfo: {
     marginLeft: 10,

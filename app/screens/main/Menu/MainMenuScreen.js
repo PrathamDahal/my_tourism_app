@@ -9,10 +9,15 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../../../context/AuthContext"; // adjust path if needed
 import UserProfile from "../../../custom/UserProfile";
+import LogoutButton from "../../../custom/LogoutButton";
 
 const MainNavigationMenuScreen = () => {
   const navigation = useNavigation();
-  const { userToken } = useAuth();
+  const { userToken, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <Text>Loading...</Text>;
+  }
 
   const options = [
     {
@@ -51,16 +56,15 @@ const MainNavigationMenuScreen = () => {
       image: require("../../../../assets/Images/Menu/travel.jpg"),
       description: "Explore customized travel packages.",
     },
-    {
-      label: "Login",
-      parent: "Auth",
-      screen: "Login",
-      image: require("../../../../assets/Images/Menu/login.jpg"),
-      description: "Access your account securely.",
-    },
-    // Only show Sign Up if not authenticated
     ...(!userToken
       ? [
+          {
+            label: "Login",
+            parent: "Auth",
+            screen: "Login",
+            image: require("../../../../assets/Images/Menu/login.jpg"),
+            description: "Access your account securely.",
+          },
           {
             label: "Sign Up",
             parent: "Auth",
@@ -84,6 +88,7 @@ const MainNavigationMenuScreen = () => {
             <UserProfile />
           </View>
         )}
+        {/* <LogoutButton /> */}
 
         <View style={styles.overlay}>
           <Text style={styles.location}>Panchpokhari Tourism</Text>

@@ -1,61 +1,90 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ImageBackground,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useFetchUserProfileQuery } from "../../../services/userApi"; // Adjust if needed
 
 const Dashboard = ({ navigation }) => {
-  const stats = [
-    { id: '1', title: 'Orders', value: '12', icon: 'cart', color: '#4CAF50' },
-    { id: '2', title: 'Wishlist', value: '5', icon: 'heart', color: '#F44336' },
-    { id: '3', title: 'Messages', value: '3', icon: 'mail', color: '#2196F3' },
-    { id: '4', title: 'Saved Items', value: '8', icon: 'bookmark', color: '#FFC107' },
+  const { data } = useFetchUserProfileQuery();
+  const userData = data?.role;
+
+  // Role-based stats config
+  const sellerStats = [
+    { id: "1", title: "Category", icon: "list", color: "#d85046ff" },
+    { id: "2", title: "Product", icon: "cube", color: "#50aaf5ff" },
   ];
 
-  const recentActivities = [
-    { id: '1', title: 'Order #12345 shipped', time: '2 hours ago' },
-    { id: '2', title: 'New product added to wishlist', time: '1 day ago' },
-    { id: '3', title: 'Payment received for Order #12344', time: '2 days ago' },
-    { id: '4', title: 'Account details updated', time: '1 week ago' },
+  const hostStats = [
+    { id: "1", title: "Accomodations", icon: "bed", color: "#ff07f3ff" },
   ];
+
+  const agencyStats = [
+    { id: "1", title: "Travel Packages", icon: "airplane", color: "#3d07ffff" },
+  ];
+
+  let stats = [];
+
+  if (userData === "SELLER") stats = sellerStats;
+  else if (userData === "HOST") stats = hostStats;
+  else if (userData === "TRAVELAGENCY") stats = agencyStats;
+  // else admin or other roles get nothing
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.header}>Dashboard</Text>
-      
-      <View style={styles.welcomeCard}>
-        <Text style={styles.welcomeText}>Welcome back, User!</Text>
-        <Text style={styles.subText}>Here's what's happening with your account</Text>
-      </View>
-      
-      <View style={styles.statsContainer}>
-        {stats.map(stat => (
-          <TouchableOpacity 
-            key={stat.id}
-            style={[styles.statCard, { backgroundColor: stat.color }]}
-            onPress={() => navigation.navigate(stat.title)}
-          >
-            <Ionicons name={stat.icon} size={30} color="#fff" />
-            <Text style={styles.statValue}>{stat.value}</Text>
-            <Text style={styles.statTitle}>{stat.title}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      
-      <Text style={styles.sectionTitle}>Recent Activity</Text>
-      <View style={styles.activitiesContainer}>
-        {recentActivities.map(activity => (
-          <View key={activity.id} style={styles.activityItem}>
-            <View style={styles.activityDot} />
-            <View style={styles.activityContent}>
-              <Text style={styles.activityTitle}>{activity.title}</Text>
-              <Text style={styles.activityTime}>{activity.time}</Text>
-            </View>
+      <ImageBackground
+        source={require("../../../../assets/Images/Menu/main-menu-banner.jpg")}
+        style={styles.headerImage}
+        resizeMode="cover"
+        imageStyle={{ borderBottomLeftRadius: 20, borderBottomRightRadius: 20 }}
+      >
+        <View style={styles.welcomeCard}>
+          <Text style={styles.welcomeText}>Welcome back, {userData || "User"}!</Text>
+          <Text style={styles.subText}>
+            Here's what's happening with your account
+          </Text>
+        </View>
+      </ImageBackground>
+
+      {stats.length > 0 && (
+        <View style={styles.dashboardBox}>
+          <Text style={styles.dashboardTitle}>Dashboard Menu</Text>
+          <View style={styles.statsContainer}>
+            {stats.map((stat) => (
+              <TouchableOpacity
+                key={stat.id}
+                onPress={() => navigation.navigate(stat.title)}
+                style={styles.statRowWrapper}
+              >
+                <LinearGradient
+                  colors={["#f8ba9dff", "#ec7b4fff", "#f5371dff"]}
+                  style={styles.statRow}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <View
+                    style={[styles.iconCircle, { backgroundColor: stat.color }]}
+                  >
+                    <Ionicons name={stat.icon} size={24} color="#fff" />
+                  </View>
+                  <View style={styles.statTextContainer}>
+                    <Text style={styles.statLabel}>{stat.title}</Text>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            ))}
           </View>
-        ))}
-      </View>
-      
-      <TouchableOpacity 
+        </View>
+      )}
+
+      <TouchableOpacity
         style={styles.helpCard}
-        onPress={() => navigation.navigate('ContactUs')}
+        onPress={() => navigation.navigate("ContactUs")}
       >
         <Ionicons name="help-circle" size={24} color="#841584" />
         <Text style={styles.helpText}>Need help? Contact our support team</Text>
@@ -65,106 +94,97 @@ const Dashboard = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: '#f9f9f9',
-  },
-  header: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#333',
+  container: { flex: 1, backgroundColor: "#f9f9f9" },
+  headerImage: {
+    width: "100%",
+    height: 280,
+    justifyContent: "flex-end",
+    marginBottom: 10,
   },
   welcomeCard: {
-    backgroundColor: '#841584',
-    padding: 20,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    padding: 10,
+    margin: 10,
     borderRadius: 10,
-    marginBottom: 20,
   },
   welcomeText: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: "bold",
+    color: "#fff",
     marginBottom: 5,
   },
   subText: {
     fontSize: 14,
-    color: '#eee',
+    color: "#eee",
+  },
+  dashboardBox: {
+    backgroundColor: "#888",
+    marginHorizontal: 10,
+    marginBottom: 20,
+    borderRadius: 18,
+    padding: 15,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  dashboardTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 15,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 30,
+    backgroundColor: "#fff",
+    alignSelf: "center",
   },
   statsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
     marginBottom: 20,
   },
-  statCard: {
-    width: '48%',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
+  statRowWrapper: {
+    marginBottom: 12,
+    borderRadius: 30,
+    overflow: "hidden",
   },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginVertical: 5,
+  statRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 30,
   },
-  statTitle: {
-    fontSize: 16,
-    color: '#fff',
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#333',
-  },
-  activitiesContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 20,
-  },
-  activityItem: {
-    flexDirection: 'row',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  activityDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#841584',
-    marginRight: 15,
-    marginTop: 5,
-  },
-  activityContent: {
+  statTextContainer: {
     flex: 1,
   },
-  activityTitle: {
-    fontSize: 16,
-    marginBottom: 3,
-  },
-  activityTime: {
-    fontSize: 12,
-    color: '#666',
+  statLabel: {
+    fontSize: 19,
+    fontWeight: "600",
+    color: "#fff",
   },
   helpCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
     padding: 15,
     borderRadius: 10,
-    marginBottom: 20,
+    marginHorizontal: 20,
+    marginBottom: 30,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
   },
   helpText: {
     fontSize: 16,
     marginLeft: 10,
-    color: '#841584',
+    color: "#841584",
   },
 });
 

@@ -11,9 +11,9 @@ import ProtectedRoute from "../../navigation/ProtectedRoute";
 import Icon from "react-native-vector-icons/FontAwesome";
 
 const MyProfile = () => {
-  const { data: userData, isLoading, isError } = useFetchUserProfileQuery();
+  const { data, isLoading, isError } = useFetchUserProfileQuery();
 
-  const user = userData?.data?.user;
+  const user = data;
 
   const fullName = [user?.firstName, user?.middleName, user?.lastName]
     .filter(Boolean)

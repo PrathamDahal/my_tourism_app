@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const AuthContext = createContext();
@@ -7,11 +7,16 @@ export const AuthProvider = ({ children }) => {
   const [userToken, setUserToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const login = async (userData, tokens) => {
+  const login = async (tokens) => {
+    if (!tokens?.accessToken || !tokens?.refreshToken) {
+      console.warn("Tokens missing in login", tokens);
+      return;
+    }
     try {
       await AsyncStorage.setItem("accessToken", tokens.accessToken);
       await AsyncStorage.setItem("refreshToken", tokens.refreshToken);
       setUserToken(tokens.accessToken);
+      console.log("User token set to:", tokens.accessToken);
     } catch (error) {
       console.error("Error saving tokens:", error);
     }

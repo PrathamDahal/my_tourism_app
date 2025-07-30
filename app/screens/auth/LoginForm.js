@@ -13,13 +13,11 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { useLoginMutation } from "../../services/auth/authApiSlice";
 import ForgetPasswordModal from "../../custom/ForgetPasswordModal"; // Make sure this modal is React Native compatible
-import { useDispatch } from "react-redux";
-import { setCredentials } from "../../features/authSlice";
 import { Feather } from "@expo/vector-icons";
 import { useAuth } from "./../../context/AuthContext";
 
 const LoginForm = () => {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -28,18 +26,20 @@ const LoginForm = () => {
   const [login, { isLoading, isError }] = useLoginMutation();
 
   const navigation = useNavigation();
-  const dispatch = useDispatch();
 
   const openModal = () => setShowModal(true);
   const closeModal = () => setShowModal(false);
 
   const handleLogin = async () => {
     try {
-      const response = await login({ username, password }).unwrap();
+      const response = await login({ email, password }).unwrap();
+      if (!response.accessToken || !response.refreshToken) {
+        console.warn("Tokens missing:", response);
+      }
 
-      const { accessToken, refreshToken, user } = response;
+      const { accessToken, refreshToken } = response;
 
-      contextLogin(user, { accessToken, refreshToken });
+      contextLogin({accessToken, refreshToken});
 
       navigation.reset({
         index: 0,
@@ -68,9 +68,9 @@ const LoginForm = () => {
         <Text style={styles.label}>Username</Text>
         <TextInput
           style={styles.input}
-          placeholder="Enter your username"
-          value={username}
-          onChangeText={setUsername}
+          placeholder="Enter your email"
+          value={email}
+          onChangeText={setEmail}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="default"
@@ -123,13 +123,16 @@ const LoginForm = () => {
 
       {isError && (
         <Text style={styles.errorText}>
-          {error?.data?.message || "Login failed. Please try again."}
+          {isError?.data?.message || "Login failed. Please try again."}
         </Text>
       )}
 
-      <View style={styles.createAccountContainer}>
+      <TouchableOpacity
+        style={styles.createAccountContainer}
+        onPress={() => navigation.navigate("SignUp")}
+      >
         <Text style={styles.createAccountText}>CREATE AN ACCOUNT</Text>
-      </View>
+      </TouchableOpacity>
 
       <ForgetPasswordModal showModal={showModal} closeModal={closeModal} />
     </ScrollView>
@@ -228,13 +231,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   createAccountContainer: {
-    marginTop: 30,
+    marginTop: 20,
+    alignItems: "center",
   },
   createAccountText: {
-    fontSize: 14,
-    color: "#4B5563", // gray-600
-    textAlign: "center",
+    color: "#e63946",
+    fontSize: 16,
+    fontWeight: "semi-bold",
   },
+
   passwordInputWrapper: {
     position: "relative",
     width: "100%",
