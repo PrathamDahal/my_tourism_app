@@ -9,27 +9,33 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useFetchUserProfileQuery } from "../../../services/userApi"; // Adjust if needed
+import { useState } from "react";
 
 const Dashboard = ({ navigation }) => {
   const { data } = useFetchUserProfileQuery();
   const userData = data?.role;
+  const [openMenu, setOpenMenu] = useState(null);
 
   // Role-based stats config
   const sellerStats = [
-    { id: "1", title: "Category", icon: "list", color: "#d85046ff" },
-    { id: "2", title: "Product", icon: "cube", color: "#50aaf5ff" },
+    { id: "1", title: "See Category", icon: "list", color: "#d85046ff" },
+    { id: "2", title: "Add Product", icon: "cube", color: "#50aaf5ff" },
   ];
 
   const hostStats = [
-    { id: "1", title: "Accomodations", icon: "bed", color: "#ff07f3ff" },
+    { id: "1", title: "Add Accomodations", icon: "bed", color: "#ff07f3ff" },
   ];
 
   const agencyStats = [
-    { id: "1", title: "Travel Packages", icon: "airplane", color: "#3d07ffff" },
+    {
+      id: "1",
+      title: "Create Travel Packages",
+      icon: "airplane",
+      color: "#3d07ffff",
+    },
   ];
 
   let stats = [];
-
   if (userData === "SELLER") stats = sellerStats;
   else if (userData === "HOST") stats = hostStats;
   else if (userData === "TRAVELAGENCY") stats = agencyStats;
@@ -44,39 +50,87 @@ const Dashboard = ({ navigation }) => {
         imageStyle={{ borderBottomLeftRadius: 20, borderBottomRightRadius: 20 }}
       >
         <View style={styles.welcomeCard}>
-          <Text style={styles.welcomeText}>Welcome back, {userData || "User"}!</Text>
+          <Text style={styles.welcomeText}>
+            Welcome back, {userData || "User"}!
+          </Text>
           <Text style={styles.subText}>
-            Here's what's happening with your account
+            Here's what's happening with your account!
           </Text>
         </View>
       </ImageBackground>
 
       {stats.length > 0 && (
         <View style={styles.dashboardBox}>
-          <Text style={styles.dashboardTitle}>Dashboard Menu</Text>
           <View style={styles.statsContainer}>
             {stats.map((stat) => (
-              <TouchableOpacity
-                key={stat.id}
-                onPress={() => navigation.navigate(stat.title)}
-                style={styles.statRowWrapper}
-              >
-                <LinearGradient
-                  colors={["#f8ba9dff", "#ec7b4fff", "#f5371dff"]}
-                  style={styles.statRow}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
+              <View key={stat.id}>
+                <TouchableOpacity
+                  onPress={() =>
+                    setOpenMenu(openMenu === stat.id ? null : stat.id)
+                  }
+                  style={styles.statRowWrapper}
                 >
-                  <View
-                    style={[styles.iconCircle, { backgroundColor: stat.color }]}
+                  <LinearGradient
+                    colors={["#f8ba9dff", "#ec7b4fff", "#f5371dff"]}
+                    style={styles.statRow}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
                   >
-                    <Ionicons name={stat.icon} size={24} color="#fff" />
+                    <View
+                      style={[
+                        styles.iconCircle,
+                        { backgroundColor: stat.color },
+                      ]}
+                    >
+                      <Ionicons name={stat.icon} size={24} color="#fff" />
+                    </View>
+                    <View style={styles.statTextContainer}>
+                      <Text style={styles.statLabel}>{stat.title}</Text>
+                    </View>
+
+                    {/* Close/Open Icon */}
+                    <Ionicons
+                      name={
+                        openMenu === stat.id ? "chevron-up" : "chevron-down"
+                      }
+                      size={20}
+                      color="#fff"
+                    />
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                {/* Expanded Section */}
+                {openMenu === stat.id && (
+                  <View style={styles.expandedSection}>
+                    <View style={styles.expandedHeader}>
+                      <Text style={styles.expandedTitle}>{stat.title}</Text>
+                      <TouchableOpacity onPress={() => setOpenMenu(null)}>
+                        <Ionicons name="close-circle" size={22} color="#444" />
+                      </TouchableOpacity>
+                    </View>
+                    {stat.title === "See Category" ? (
+                      <View>
+                        <Text style={styles.expandedContent}>
+                          📂 Category List:
+                        </Text>
+                        <Text style={styles.expandedContent}>
+                          - Electronics
+                        </Text>
+                        <Text style={styles.expandedContent}>- Fashion</Text>
+                        <Text style={styles.expandedContent}>
+                          - Home Appliances
+                        </Text>
+                      </View>
+                    ) : (
+                      <View>
+                        <Text style={styles.expandedContent}>
+                          🛠 Feature Coming Soon for "{stat.title}"
+                        </Text>
+                      </View>
+                    )}
                   </View>
-                  <View style={styles.statTextContainer}>
-                    <Text style={styles.statLabel}>{stat.title}</Text>
-                  </View>
-                </LinearGradient>
-              </TouchableOpacity>
+                )}
+              </View>
             ))}
           </View>
         </View>
@@ -128,16 +182,6 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 2,
   },
-  dashboardTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 15,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 30,
-    backgroundColor: "#fff",
-    alignSelf: "center",
-  },
   statsContainer: {
     marginBottom: 20,
   },
@@ -185,6 +229,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 10,
     color: "#841584",
+  },
+  expandedSection: {
+    backgroundColor: "#fff",
+    marginHorizontal: 8,
+    marginTop: 5,
+    marginBottom: 15,
+    padding: 12,
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  expandedHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  expandedTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  expandedContent: {
+    fontSize: 14,
+    color: "#666",
   },
 });
 

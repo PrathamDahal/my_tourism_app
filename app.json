@@ -1,17 +1,18 @@
 {
   "expo": {
     "name": "Tourism-App",
-    "slug": "Tourism-App",
+    "slug": "my_tourism_app",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/T-App-icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/T-App-Splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true
     },
