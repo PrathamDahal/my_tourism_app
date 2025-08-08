@@ -1,0 +1,40 @@
+// app.config.js
+export default {
+  expo: {
+    name: "Tourism-App",
+    slug: "my_tourism_app",
+    version: "1.0.0",
+    orientation: "default",
+    icon: "./assets/T-App-icon.png",
+    userInterfaceStyle: "light",
+    newArchEnabled: false,
+    splash: {
+      image: "./assets/T-App-Splash-icon.png",
+      resizeMode: "contain",
+      backgroundColor: "#ffffff"
+    },
+    assetBundlePatterns: ["**/*"],
+    ios: {
+      supportsTablet: true
+    },
+    android: {
+      adaptiveIcon: {
+        foregroundImage: "./assets/T-App-icon.png",
+        backgroundColor: "#ffffff"
+      },
+      edgeToEdgeEnabled: true,
+      package: "com.firstham_01.my_tourism_app"
+    },
+    web: {
+      favicon: "./assets/T-App-icon.png"
+    },
+    extra: {
+      eas: {
+        projectId: "2f22dd91-f450-4023-9e85-2151ab37ae45"
+      }
+    },
+    plugins: [
+      "expo-font"
+    ]
+  }
+};
