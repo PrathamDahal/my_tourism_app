@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 import FilterProductComponent from "./FilterProducts";
 
 const CategoryProducts = ({ route }) => {
-  const { categoryId, categoryName } = route.params;
+  const { slug, categoryName } = route.params;
   const navigation = useNavigation();
 
   const {
@@ -26,13 +26,23 @@ const CategoryProducts = ({ route }) => {
     isError,
     refetch,
     isFetching,
-  } = useGetProductsByCategoryQuery(categoryId);
+  } = useGetProductsByCategoryQuery(slug, {
+    skip: !slug,
+  });
 
   const products = product?.data || [];
   const totalProducts = product?.totalProducts;
   const [searchQuery, setSearchQuery] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredProducts, setFilteredProducts] = useState([]);
+
+  useEffect(() => {
+    if (products?.length) {
+      // Filter products to only include active ones
+      const activeProducts = products.filter(product => product.status === "active");
+      setFilteredProducts(activeProducts);
+    }
+  }, [products]);
 
   const finalFilteredProducts = filteredProducts?.filter((item) =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -86,16 +96,13 @@ const CategoryProducts = ({ route }) => {
     );
   }
 
-  useEffect(() => {
-    if (products?.length) {
-      setFilteredProducts(products);
-    }
-  }, [products]);
-
   const handleApplyFilters = (filters) => {
     const { minPrice, maxPrice, minRating, tags } = filters;
 
     const newFiltered = products.filter((product) => {
+      // First check if product is active
+      if (product.status !== "active") return false;
+
       const priceMatch =
         (!minPrice || product.price >= minPrice) &&
         (!maxPrice || product.price <= maxPrice);
@@ -118,15 +125,18 @@ const CategoryProducts = ({ route }) => {
     setFilteredProducts(newFiltered);
   };
 
+  // Get unique tags from active products only
   const uniqueTags = [
     ...new Set(
-      products.flatMap((p) => {
-        try {
-          return JSON.parse(p.tags?.[0] || "[]");
-        } catch (e) {
-          return [];
-        }
-      })
+      products
+        .filter(p => p.status === "active")
+        .flatMap((p) => {
+          try {
+            return JSON.parse(p.tags?.[0] || "[]");
+          } catch (e) {
+            return [];
+          }
+        })
     ),
   ];
 
@@ -265,6 +275,22 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 30,
+  },
+  statusBadge: {
+    fontSize: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  activeBadge: {
+    backgroundColor: '#4CAF50',
+    color: 'white',
+  },
+  inactiveBadge: {
+    backgroundColor: '#F44336',
+    color: 'white',
   },
   productCard: {
     width: "48%",

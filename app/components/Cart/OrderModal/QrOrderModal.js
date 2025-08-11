@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
+import OrderSuccessModal from "./SuccessModal";
 
 const QrPurchaseModal = ({ isOpen, onClose, cartItems = [], total = 0 }) => {
   const [activeTab, setActiveTab] = useState("payment");

@@ -12,6 +12,7 @@ import Icon from "react-native-vector-icons/FontAwesome";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
 import { useFetchUserProfileQuery } from "../services/userApi";
+import ConfirmationModal from "./ConfirmationModal";
 
 // Helper Dropdown Item
 const DropdownItem = ({ icon, label, onPress }) => (
@@ -27,6 +28,7 @@ const UserProfile = () => {
   const { data, isLoading } = useFetchUserProfileQuery();
   const userData = data;
   const [isDropdownOpen, setDropdownOpen] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false); // confirmation modal state
 
   const imageUri =
     userData?.images || require("../../assets/Images/default-avatar-image.jpg");
@@ -42,13 +44,13 @@ const UserProfile = () => {
   };
 
   const getDashboardLabel = (role) => {
-    switch (role) {
+    switch (role?.toUpperCase()) {
       case "SELLER":
-        return "Seller Dashboard";
+        return "Add a Product";
       case "HOST":
-        return "Host Dashboard";
+        return "Add an Accommodation";
       case "TRAVELAGENCY":
-        return "Travel Dashboard";
+        return "Add a Travel Package";
       default:
         return "Dashboard";
     }
@@ -119,7 +121,7 @@ const UserProfile = () => {
                   ) && (
                     <DropdownItem
                       icon="dashboard"
-                      label="Dashboard"
+                      label={getDashboardLabel(userData?.role)}
                       onPress={() => {
                         setDropdownOpen(false);
                         navigation.navigate("Auth", {
@@ -133,7 +135,7 @@ const UserProfile = () => {
                 <View style={styles.divider} />
                 <TouchableOpacity
                   style={styles.logoutButton}
-                  onPress={handleLogout}
+                  onPress={() => setShowConfirm(true)} // open confirmation
                 >
                   <Icon
                     name="sign-out"
@@ -150,6 +152,16 @@ const UserProfile = () => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      <ConfirmationModal
+        visible={showConfirm}
+        question="Are you sure you want to logout?"
+        onConfirm={() => {
+          setShowConfirm(false);
+          handleLogout();
+        }}
+        onCancel={() => setShowConfirm(false)}
+      />
     </View>
   );
 };

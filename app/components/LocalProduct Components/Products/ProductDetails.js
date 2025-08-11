@@ -33,7 +33,7 @@ const ProductDetails = () => {
   const { data, isLoading, isError } = useGetProductBySlugQuery(slug);
   const [addToCart] = useAddToCartMutation();
 
-  const product = data?.product;
+  const product = data;
   const images = product?.images || [];
 
   const increaseQuantity = () => {
@@ -52,6 +52,12 @@ const ProductDetails = () => {
         `Cannot add more than available stock (${product.stock})`
       );
       setShowErrorToast(true);
+
+      // Hide after 3 seconds
+      setTimeout(() => {
+        setShowErrorToast(false);
+      }, 3000);
+
       return;
     }
 
@@ -61,6 +67,11 @@ const ProductDetails = () => {
     } catch (err) {
       setErrorMessage("Failed to add item to cart");
       setShowErrorToast(true);
+
+      // Hide after 3 seconds
+      setTimeout(() => {
+        setShowErrorToast(false);
+      }, 3000);
     }
   };
 

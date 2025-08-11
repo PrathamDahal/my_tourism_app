@@ -14,7 +14,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useGetProductsQuery } from "../../../services/productApi";
 import { API_BASE_URL } from "../../../../config";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const ProductDisplay = () => {
   const navigation = useNavigation();
@@ -29,10 +29,22 @@ const ProductDisplay = () => {
   const totalProducts = products?.totalProducts;
   const [searchQuery, setSearchQuery] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeProducts, setActiveProducts] = useState([]);
 
-  const filteredProducts = products?.data?.filter((item) =>
+  // Filter products to only include active ones
+  useEffect(() => {
+    if (products?.data) {
+      const filtered = products.data.filter(product => product.status === "active");
+      setActiveProducts(filtered);
+    }
+  }, [products]);
+
+  // Filter active products by search query
+  const filteredProducts = activeProducts.filter((item) =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const formatPrice = (price) => `$${parseFloat(price ?? 0).toFixed(2)}`;
 
   const handleSuggestionSelect = (value) => {
     setSearchQuery(value);
@@ -63,7 +75,7 @@ const ProductDisplay = () => {
         <Text style={styles.productName} numberOfLines={2}>
           {product.name}
         </Text>
-        <Text style={styles.productPrice}>${product.price.toFixed(2)}</Text>
+        <Text style={styles.productPrice}>{formatPrice(product?.price)}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -93,12 +105,14 @@ const ProductDisplay = () => {
         <Text style={styles.title}>All Products</Text>
         <View style={styles.totalContainer}>
           <Ionicons name="cube" size={18} color="#777" />
-          <Text style={styles.totalProductsText}>{totalProducts} Items</Text>
+          <Text style={styles.totalProductsText}>
+            {activeProducts.length} Items
+          </Text>
         </View>
       </View>
 
       <TextInput
-        placeholder="Search destinations..."
+        placeholder="Search products..."
         value={searchQuery}
         onChangeText={(text) => {
           setSearchQuery(text);
@@ -146,7 +160,7 @@ const ProductDisplay = () => {
         }
         ListEmptyComponent={
           <View style={styles.centerContainer}>
-            <Text style={styles.emptyText}>No products available</Text>
+            <Text style={styles.emptyText}>No active products available</Text>
           </View>
         }
       />

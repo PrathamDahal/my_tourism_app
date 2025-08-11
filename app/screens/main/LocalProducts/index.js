@@ -11,7 +11,7 @@ import {
 import { useGetCategoriesQuery } from "../../../services/categoryApi";
 import { useGetProductsQuery } from "../../../services/productApi";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { API_BASE_URL } from "../../../../config";
 
 const { width } = Dimensions.get("window");
@@ -35,9 +35,19 @@ const LocalProducts = ({ navigation }) => {
   } = useGetProductsQuery();
 
   const [showAll, setShowAll] = useState(false);
+  const [activeProducts, setActiveProducts] = useState([]);
+
+  // Filter products to only include active ones
+  useEffect(() => {
+    if (products?.data) {
+      const filtered = products.data.filter(product => product.status === "active");
+      setActiveProducts(filtered);
+    }
+  }, [products]);
 
   const visibleCategories = showAll ? categories : categories?.slice(0, 4);
   const shouldShowSeeMore = categories?.length > 4;
+  const formatPrice = (price) => `$${parseFloat(price ?? 0).toFixed(2)}`;
 
   if (isCategoriesLoading || isProductsLoading) {
     return (
@@ -65,7 +75,7 @@ const LocalProducts = ({ navigation }) => {
 
   const renderProductCard = (product, index) => (
     <View
-      key={product?._id ?? `product-${index}`}
+      key={product?.id ?? `product-${index}`}
       style={styles.productCardContainer}
     >
       <TouchableOpacity
@@ -73,13 +83,15 @@ const LocalProducts = ({ navigation }) => {
         onPress={() =>
           navigation.navigate("ProductDetails", {
             slug: product?.slug,
+            categoryName: categories?.name,
           })
         }
       >
         <Image
           source={
-            typeof product?.images?.[0] === "string" && product?.images[0].trim()
-              ? {uri: `${API_BASE_URL}/${product.images[0]}`}
+            typeof product?.images?.[0] === "string" &&
+            product?.images[0].trim()
+              ? { uri: `${API_BASE_URL}/${product.images[0]}` }
               : require("../../../../assets/T-App-icon.png")
           }
           style={styles.productImage}
@@ -89,14 +101,14 @@ const LocalProducts = ({ navigation }) => {
           <Text style={styles.productName} numberOfLines={2}>
             {product.name}
           </Text>
-          <Text style={styles.productPrice}>${product.price.toFixed(2)}</Text>
+          <Text style={styles.productPrice}>{formatPrice(product?.price)}</Text>
         </View>
       </TouchableOpacity>
     </View>
   );
 
-  // Get first 15 products
-  const displayedProducts = products?.data?.slice(0, 15) || [];
+  // Get first 15 active products
+  const displayedProducts = activeProducts.slice(0, 15);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -109,12 +121,11 @@ const LocalProducts = ({ navigation }) => {
         <View style={styles.categoriesContainer}>
           {visibleCategories?.map((category) => (
             <TouchableOpacity
-              key={category._id}
+              key={category.id}
               style={styles.categoryButton}
               onPress={() =>
                 navigation.navigate("CategoryProducts", {
-                  categoryId: category._id,
-                  categoryName: category.name,
+                  slug: category.slug,
                 })
               }
             >
@@ -132,8 +143,12 @@ const LocalProducts = ({ navigation }) => {
         <Text style={styles.sectionHeader}>Featured Products</Text>
 
         <View style={styles.productsGrid}>
-          {displayedProducts.map((product, index) =>
-            renderProductCard(product, index)
+          {displayedProducts.length > 0 ? (
+            displayedProducts.map((product, index) =>
+              renderProductCard(product, index)
+            )
+          ) : (
+            <Text style={styles.noProductsText}>No active products available</Text>
           )}
         </View>
 
@@ -250,6 +265,12 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  noProductsText: {
+    textAlign: 'center',
+    width: '100%',
+    marginTop: 20,
+    color: '#666',
   },
 });
 
