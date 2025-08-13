@@ -8,6 +8,7 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import OrderSuccessModal from "./SuccessModal";
 
 const CODPurchaseModal = ({ isOpen, onClose, cartItems, total }) => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -36,12 +37,7 @@ const CODPurchaseModal = ({ isOpen, onClose, cartItems, total }) => {
   }, [isOpen]);
 
   const totalQuantity = (cartItems || []).reduce(
-    (sum, vendor) =>
-      sum +
-      (vendor.items || []).reduce(
-        (vendorSum, item) => vendorSum + item.quantity,
-        0
-      ),
+    (sum, item) => sum + item.quantity,
     0
   );
 
@@ -87,23 +83,13 @@ const CODPurchaseModal = ({ isOpen, onClose, cartItems, total }) => {
 
               <View style={styles.section}>
                 <Text style={styles.sectionHeader}>Order Summary</Text>
-                {(cartItems || []).map((vendor, vendorIndex) => (
-                  <View key={`vendor-${vendorIndex}`}>
-                    <Text style={styles.vendor}>{vendor.vendor}</Text>
-                    {(vendor.items || []).map((item, itemIndex) => (
-                      <View
-                        key={`item-${vendorIndex}-${itemIndex}`}
-                        style={styles.itemRow}
-                      >
-                        <Text>
-                          {item.name}
-                          {item.quantity > 1 && ` (×${item.quantity})`}
-                        </Text>
-                        <Text>
-                          Rs.{(item.price * item.quantity).toFixed(2)}
-                        </Text>
-                      </View>
-                    ))}
+                {(cartItems || []).map((item, index) => (
+                  <View key={`item-${index}`} style={styles.itemRow}>
+                    <Text>
+                      {item.name}
+                      {item.quantity > 1 && ` (×${item.quantity})`}
+                    </Text>
+                    <Text>Rs.{(item.price * item.quantity).toFixed(2)}</Text>
                   </View>
                 ))}
 

@@ -7,7 +7,7 @@ export default {
     orientation: "default",
     icon: "./assets/T-App-icon.png",
     userInterfaceStyle: "light",
-    newArchEnabled: false,
+    // newArchEnabled: false,
     splash: {
       image: "./assets/T-App-Splash-icon.png",
       resizeMode: "contain",

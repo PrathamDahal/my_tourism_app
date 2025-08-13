@@ -5,6 +5,7 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [userToken, setUserToken] = useState(null);
+  const [refreshToken, setRefreshToken] = useState(null); // Add refreshToken state
   const [isLoading, setIsLoading] = useState(true);
 
   const login = async (tokens) => {
@@ -16,7 +17,7 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.setItem("accessToken", tokens.accessToken);
       await AsyncStorage.setItem("refreshToken", tokens.refreshToken);
       setUserToken(tokens.accessToken);
-      console.log("User token set to:", tokens.accessToken);
+      setRefreshToken(tokens.refreshToken);  // save refresh token to state
     } catch (error) {
       console.error("Error saving tokens:", error);
     }
@@ -27,6 +28,7 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.removeItem("accessToken");
       await AsyncStorage.removeItem("refreshToken");
       setUserToken(null);
+      setRefreshToken(null);  // clear refresh token state
     } catch (error) {
       console.error("Error clearing tokens:", error);
     }
@@ -34,10 +36,10 @@ export const AuthProvider = ({ children }) => {
 
   const loadTokens = async () => {
     try {
-      const storedToken = await AsyncStorage.getItem("accessToken");
-      if (storedToken) {
-        setUserToken(storedToken);
-      }
+      const storedAccessToken = await AsyncStorage.getItem("accessToken");
+      const storedRefreshToken = await AsyncStorage.getItem("refreshToken");
+      if (storedAccessToken) setUserToken(storedAccessToken);
+      if (storedRefreshToken) setRefreshToken(storedRefreshToken);
     } catch (error) {
       console.error("Error loading tokens:", error);
     } finally {
@@ -53,6 +55,7 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         userToken,
+        refreshToken, // expose refreshToken in context
         login,
         logout,
         isLoading,

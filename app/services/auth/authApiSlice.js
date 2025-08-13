@@ -22,19 +22,20 @@ export const authApiSlice = createApi({
 
     // Refresh token mutation
     refreshToken: builder.mutation({
-      query: () => ({
+      // Accept refreshToken as argument
+      query: (refreshToken) => ({
         url: "/auth/refresh",
         method: "POST",
+        body: { refreshToken }, // send refreshToken in body
       }),
-      async onQueryStarted(_, { dispatch, queryFulfilled, getState }) {
+      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
-          const refreshToken = getState().auth.refreshToken;
-
+          // arg is the refreshToken passed when you call this mutation
           dispatch(
             setCredentials({
               accessToken: data.accessToken,
-              refreshToken,
+              refreshToken: arg,
             })
           );
         } catch (error) {

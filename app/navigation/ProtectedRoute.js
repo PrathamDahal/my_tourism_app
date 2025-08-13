@@ -9,10 +9,10 @@ const ProtectedRoute = ({ children }) => {
   if (!userToken) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Please login to access this page</Text>
+        <Text style={{marginBottom: 4, }}>Please login to access this page</Text>
         <Button 
           title="Go to Login" 
-          onPress={() => navigation.navigate('MainMenu', { screen: 'Login' })}
+          onPress={() => navigation.navigate('Auth', { screen: 'Login' })}
         />
       </View>
     );

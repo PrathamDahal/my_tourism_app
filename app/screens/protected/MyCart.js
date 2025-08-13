@@ -52,7 +52,7 @@ const MyCart = () => {
       if (!item || !item.product) return;
 
       const product = item.product;
-      const sellerId = product.seller?._id || "default";
+      const sellerId = product.seller?.id || "default";
       const sellerName = product.seller
         ? `${product.seller.firstName} ${product.seller.lastName}`
         : "Store";
@@ -69,8 +69,8 @@ const MyCart = () => {
       const vendor = vendorMap.get(sellerId);
       const safeQuantity = Math.min(item.quantity, product.stock || 0);
       vendor.items.push({
-        id: item._id,
-        productId: product._id,
+        id: item.id,
+        productId: product.id,
         name: product.name,
         color: product.color || "N/A",
         quantity: safeQuantity,
@@ -96,7 +96,10 @@ const MyCart = () => {
     products.forEach((vendor) => {
       vendor.items.forEach((item) => {
         if (item.checked) {
-          calculatedTotal += item.quantity * item.price;
+          const price = parseFloat(item.price);
+          if (!isNaN(price)) {
+            calculatedTotal += item.quantity * price;
+          }
         }
       });
     });
@@ -132,7 +135,6 @@ const MyCart = () => {
       newQuantity = Number(newQuantity);
       if (isNaN(newQuantity) || newQuantity < 1) return;
 
-      // Ensure we don't exceed stock
       newQuantity = Math.min(newQuantity, item.stock);
       if (newQuantity === item.quantity) return;
 
@@ -141,22 +143,25 @@ const MyCart = () => {
       setProducts(updatedProducts);
 
       // Update backend
-      const response = await updateCart({
+      await updateCart({
         productId: item.productId,
         quantity: newQuantity,
       }).unwrap();
-
-      // If there was an error, refetch to get correct data
-      if (response.error) {
-        refetch();
-      }
     } catch (error) {
-      console.error("Failed to update quantity:", error);
-      refetch(); // Revert to server data on error
+      if (error?.data) {
+        console.error("Backend error message:", error.data.message);
+      } else {
+        console.error("Failed to update quantity:", error);
+      }
+      refetch();
     }
   };
 
-  const calculateSubtotal = (item) => (item.quantity * item.price).toFixed(2);
+  const calculateSubtotal = (item) => {
+    const price = parseFloat(item.price);
+    if (isNaN(price)) return "0.00";
+    return (item.quantity * price).toFixed(2);
+  };
 
   // Calculate summary based on selected items
   const calculateSummary = () => {
@@ -167,7 +172,10 @@ const MyCart = () => {
     products.forEach((vendor) => {
       vendor.items.forEach((item) => {
         if (item.checked) {
-          subtotal += item.price * item.quantity;
+          const price = parseFloat(item.price);
+          if (!isNaN(price)) {
+            subtotal += price * item.quantity;
+          }
           itemCount += item.quantity;
         }
       });
@@ -187,10 +195,10 @@ const MyCart = () => {
   };
 
   const getCurrentVendorTotal = () => {
-    return getCurrentVendorItems().reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
+    return getCurrentVendorItems().reduce((sum, item) => {
+      const price = parseFloat(item.price);
+      return !isNaN(price) ? sum + price * item.quantity : sum;
+    }, 0);
   };
 
   // Update summary whenever products or shipping costs change
@@ -311,8 +319,15 @@ const MyCart = () => {
                           Color: {item.color}
                         </Text>
                         <Text style={styles.itemMetaText}>
-                          ${item.price.toFixed(2)}
+                          Rs.{" "}
+                          {(() => {
+                            const priceNum = parseFloat(item.price);
+                            return isNaN(priceNum)
+                              ? "0.00"
+                              : priceNum.toFixed(2);
+                          })()}
                         </Text>
+
                         <Text style={styles.itemMetaText}>
                           Stock: {item.stock}
                         </Text>
@@ -460,30 +475,6 @@ const MyCart = () => {
                   ${cartSummary.total.toFixed(2)}
                 </Text>
               </View>
-
-              <TouchableOpacity
-                style={[
-                  styles.checkoutButton,
-                  cartSummary.itemCount === 0 && styles.disabledCheckout,
-                ]}
-                disabled={cartSummary.itemCount === 0}
-                onPress={() => {
-                  Alert.alert(
-                    "Confirm Purchase",
-                    `Total: $${cartSummary.total.toFixed(2)}\n${
-                      cartSummary.itemCount
-                    } items`,
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      { text: "Confirm", onPress: handleFinalCheckout },
-                    ]
-                  );
-                }}
-              >
-                <Text style={styles.checkoutButtonText}>
-                  Proceed to Checkout
-                </Text>
-              </TouchableOpacity>
             </View>
 
             <TouchableOpacity

@@ -1,75 +1,296 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import RatingStars from './../../../custom/RatingStars';
+// CustomerFeedback.js
+import { useState } from "react";
+import {
+  View,
+  Text,
+  Image,
+  TextInput,
+  TouchableOpacity,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Alert,
+} from "react-native";
+import { FontAwesome } from "@expo/vector-icons";
+import { useFetchUserProfileQuery } from "../../../services/userApi";
+import {
+  useDeleteReviewMutation,
+  useEditReviewMutation,
+} from "../../../services/feedback";
 
-const CustomerFeedback = ({ feedback }) => {
+// Simple Rating Stars Component
+const RatingStars = ({ rating, onChange, interactive }) => {
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.listContainer}>
-        {feedback.map((item, index) => (
-          <View key={index.toString()} style={styles.card}>
-            <View style={styles.row}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
-              </View>
-              <View style={styles.content}>
-                <Text style={styles.name}>{item.name}</Text>
-                <RatingStars rating={item.reviews} />
-                <Text style={styles.comment}>{item.comment}</Text>
-              </View>
-            </View>
-          </View>
-        ))}
-      </ScrollView>
+    <View style={{ flexDirection: "row" }}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <TouchableOpacity
+          key={star}
+          onPress={() => interactive && onChange(star)}
+          activeOpacity={interactive ? 0.6 : 1}
+        >
+          <FontAwesome
+            name={star <= rating ? "star" : "star-o"}
+            size={20}
+            color="#fbbf24"
+            style={{ marginRight: 4 }}
+          />
+        </TouchableOpacity>
+      ))}
     </View>
   );
 };
 
+const CustomerFeedback = ({ feedback, onSubmit }) => {
+  const [newRating, setNewRating] = useState(0);
+  const [newComment, setNewComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const { data: userProfile } = useFetchUserProfileQuery();
+  const isLoggedIn = !!userProfile;
+
+  const [deleteReview, { isLoading: deleting }] = useDeleteReviewMutation();
+  const [editReview] = useEditReviewMutation();
+
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editData, setEditData] = useState({
+    reviewId: "",
+    rating: 0,
+    comment: "",
+  });
+
+  const handleDelete = async (id) => {
+    Alert.alert(
+      "Confirm Delete",
+      "Are you sure you want to delete this review?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteReview(id).unwrap();
+            } catch {
+              Alert.alert("Error", "Failed to delete review");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleEdit = (item) => {
+    setEditData({
+      reviewId: item.id,
+      rating: item.reviews,
+      comment: item.comment,
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async () => {
+    try {
+      await editReview(editData).unwrap();
+      setEditModalOpen(false);
+    } catch {
+      Alert.alert("Error", "Failed to update review");
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (newRating === 0 || newComment.trim() === "") {
+      Alert.alert("Validation Error", "Please provide a rating and a comment.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await onSubmit({ rating: newRating, comment: newComment });
+      setNewRating(0);
+      setNewComment("");
+    } catch {
+      Alert.alert("Error", "Failed to submit review");
+    }
+    setSubmitting(false);
+  };
+
+  return (
+    <ScrollView style={{ padding: 16 }}>
+      {/* Existing Reviews */}
+      {feedback.map((item, index) => (
+        <View key={index} style={styles.reviewCard}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <View style={styles.avatar}>
+              {item.image ? (
+                <Image
+                  source={{ uri: item.image }}
+                  style={{ width: "100%", height: "100%" }}
+                />
+              ) : (
+                <Text style={styles.avatarText}>
+                  {item.name?.charAt(0) || "?"}
+                </Text>
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.name}>{item.name}</Text>
+              <RatingStars rating={item.reviews} />
+              <Text style={styles.comment}>{item.comment}</Text>
+            </View>
+
+            {userProfile?.id === item.userId && (
+              <View style={{ flexDirection: "column" }}>
+                <TouchableOpacity
+                  onPress={() => handleEdit(item)}
+                  style={{ marginRight: 5 }}
+                >
+                  <FontAwesome name="edit" size={20} color="blue" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleDelete(item.id)}
+                  disabled={deleting}
+                >
+                  <FontAwesome name="trash" size={20} color="red" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      ))}
+
+      {/* Submit Review */}
+      {isLoggedIn && (
+        <View style={styles.form}>
+          <Text style={styles.formTitle}>Give a Review</Text>
+
+          <Text>Your Rating</Text>
+          <RatingStars rating={newRating} onChange={setNewRating} interactive />
+
+          <TextInput
+            placeholder="Write your review here..."
+            value={newComment}
+            onChangeText={setNewComment}
+            style={styles.textArea}
+            multiline
+          />
+
+          <TouchableOpacity
+            onPress={handleSubmit}
+            style={styles.submitBtn}
+            disabled={submitting}
+          >
+            <Text style={{ color: "#fff" }}>
+              {submitting ? "Submitting..." : "Submit Review"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Edit Modal */}
+      <Modal visible={editModalOpen} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <TouchableOpacity
+              onPress={() => setEditModalOpen(false)}
+              style={styles.closeBtn}
+            >
+              <Text style={{ fontSize: 18 }}>✕</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Edit Review</Text>
+
+            <Text>Rating</Text>
+            <RatingStars
+              rating={editData.rating}
+              onChange={(val) =>
+                setEditData((prev) => ({ ...prev, rating: val }))
+              }
+              interactive
+            />
+
+            <Text style={{ marginTop: 8 }}>Comment</Text>
+            <TextInput
+              value={editData.comment}
+              onChangeText={(val) =>
+                setEditData((prev) => ({ ...prev, comment: val }))
+              }
+              style={styles.textArea}
+              multiline
+            />
+
+            <TouchableOpacity
+              onPress={handleEditSubmit}
+              style={styles.submitBtn}
+            >
+              <Text style={{ color: "#fff" }}>Save Changes</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </ScrollView>
+  );
+};
+
 const styles = StyleSheet.create({
-  container: {
-    marginTop: 24,
-    paddingHorizontal: 16,
-    flex: 1,
-  },
-  listContainer: {
-    paddingBottom: 20,
-  },
-  card: {
+  reviewCard: {
+    padding: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    backgroundColor: '#ffffff',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderColor: "#ddd",
+    borderRadius: 8,
+    marginBottom: 12,
   },
   avatar: {
     width: 48,
     height: 48,
+    backgroundColor: "#e5e7eb",
     borderRadius: 24,
-    backgroundColor: '#e5e7eb',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
+    marginRight: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
   },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '600',
+  avatarText: { fontSize: 18, fontWeight: "bold" },
+  name: { fontWeight: "bold", fontSize: 16 },
+  comment: { fontSize: 14, color: "#6b7280", marginTop: 4 },
+  form: {
+    borderWidth: 2,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    padding: 16,
+    marginTop: 16,
   },
-  content: {
+  formTitle: { fontSize: 16, fontWeight: "bold", marginBottom: 8 },
+  textArea: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 6,
+    padding: 8,
+    minHeight: 80,
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  submitBtn: {
+    backgroundColor: "#2563eb",
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: 6,
+  },
+  modalOverlay: {
     flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  name: {
-    fontWeight: '600',
-    fontSize: 16,
+  modalContent: {
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 8,
+    width: "90%",
   },
-  comment: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
+  closeBtn: {
+    position: "absolute",
+    top: 10,
+    right: 10,
   },
+  modalTitle: { fontSize: 16, fontWeight: "bold", marginBottom: 8 },
 });
 
 export default CustomerFeedback;

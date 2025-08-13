@@ -9,6 +9,8 @@ import {
   Dimensions,
   ActivityIndicator,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import CustomerFeedback from "./CustomerFeedback";
@@ -17,6 +19,7 @@ import { useAddToCartMutation } from "../../../services/cartApi";
 import RatingStars from "./../../../custom/RatingStars";
 import { customerFeedback } from "../../../data/CustomerFeedback";
 import { API_BASE_URL } from "../../../../config";
+import CustomerFeedbackContainer from "./CustomerFeedbackContainer";
 
 const { width } = Dimensions.get("window");
 
@@ -62,7 +65,7 @@ const ProductDetails = () => {
     }
 
     try {
-      await addToCart({ productId: product._id, quantity }).unwrap();
+      await addToCart({ productId: product.id, quantity }).unwrap();
       navigation.navigate("Auth", { screen: "MyCart" });
     } catch (err) {
       setErrorMessage("Failed to add item to cart");
@@ -106,126 +109,134 @@ const ProductDetails = () => {
   const mainImage = images.length ? images[selectedImageIndex] : null;
 
   return (
-    <View style={styles.container}>
-      <ScrollView>
-        {/* Image Gallery Section */}
-        <View style={styles.galleryContainer}>
-          <FlatList
-            horizontal
-            data={images}
-            renderItem={renderThumbnail}
-            keyExtractor={(item, index) => index.toString()}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.thumbnailList}
-          />
-
-          {showErrorToast && (
-            <View style={styles.toast}>
-              <Text style={styles.toastText}>{errorMessage}</Text>
-            </View>
-          )}
-
-          {mainImage && (
-            <Image
-              source={{ uri: `${API_BASE_URL}/${mainImage}` }}
-              style={styles.mainImage}
-              resizeMode="contain"
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 20}
+    >
+      <View style={styles.container}>
+        <ScrollView>
+          {/* Image Gallery Section */}
+          <View style={styles.galleryContainer}>
+            <FlatList
+              horizontal
+              data={images}
+              renderItem={renderThumbnail}
+              keyExtractor={(item, index) => index.toString()}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.thumbnailList}
             />
-          )}
-        </View>
 
-        {/* Product Details Section */}
-        <View style={styles.detailsContainer}>
-          <Text style={styles.title}>{product.name}</Text>
-          <RatingStars rating={Number(product.rating) || 0} />
-          <Text style={styles.price}>Nrs {product.price}</Text>
-          <Text style={styles.seller}>
-            Seller: {product.seller?.name || "N/A"}
-          </Text>
-          <Text style={styles.description}>{product.description}</Text>
+            {showErrorToast && (
+              <View style={styles.toast}>
+                <Text style={styles.toastText}>{errorMessage}</Text>
+              </View>
+            )}
 
-          <View style={styles.quantityRow}>
-            <TouchableOpacity
-              onPress={decreaseQuantity}
-              disabled={quantity <= 1}
-              style={styles.quantityButton}
-            >
-              <Text
-                style={[styles.qtySign, quantity <= 1 && styles.disabledSign]}
-              >
-                –
-              </Text>
-            </TouchableOpacity>
-            <Text style={styles.qtyNumber}>{quantity}</Text>
-            <TouchableOpacity
-              onPress={increaseQuantity}
-              disabled={product.stock && quantity >= product.stock}
-              style={styles.quantityButton}
-            >
-              <Text
-                style={[
-                  styles.qtySign,
-                  product.stock &&
-                    quantity >= product.stock &&
-                    styles.disabledSign,
-                ]}
-              >
-                +
-              </Text>
-            </TouchableOpacity>
-
-            {product.stock && (
-              <Text style={styles.stockInfo}>Available: {product.stock}</Text>
+            {mainImage && (
+              <Image
+                source={{ uri: `${API_BASE_URL}/${mainImage}` }}
+                style={styles.mainImage}
+                resizeMode="contain"
+              />
             )}
           </View>
 
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={handleAddToCartClick}
-          >
-            <Text style={styles.addText}>Add to Cart</Text>
-          </TouchableOpacity>
+          {/* Product Details Section */}
+          <View style={styles.detailsContainer}>
+            <Text style={styles.title}>{product.name}</Text>
+            <RatingStars rating={Number(product.rating) || 0} />
+            <Text style={styles.price}>Nrs {product.price}</Text>
+            <Text style={styles.seller}>
+              Seller: {product.seller?.name || "N/A"}
+            </Text>
+            <Text style={styles.description}>{product.description}</Text>
 
-          <Text style={styles.categoryTags}>
-            <Text style={styles.bold}>Category:</Text>{" "}
-            {product.category?.name || "Uncategorized"}
-          </Text>
-          <Text style={styles.categoryTags}>
-            <Text style={styles.bold}>Tags:</Text>{" "}
-            {product.tags?.length ? product.tags.join(", ") : "No tags"}
-          </Text>
-        </View>
+            <View style={styles.quantityRow}>
+              <TouchableOpacity
+                onPress={decreaseQuantity}
+                disabled={quantity <= 1}
+                style={styles.quantityButton}
+              >
+                <Text
+                  style={[styles.qtySign, quantity <= 1 && styles.disabledSign]}
+                >
+                  –
+                </Text>
+              </TouchableOpacity>
+              <Text style={styles.qtyNumber}>{quantity}</Text>
+              <TouchableOpacity
+                onPress={increaseQuantity}
+                disabled={product.stock && quantity >= product.stock}
+                style={styles.quantityButton}
+              >
+                <Text
+                  style={[
+                    styles.qtySign,
+                    product.stock &&
+                      quantity >= product.stock &&
+                      styles.disabledSign,
+                  ]}
+                >
+                  +
+                </Text>
+              </TouchableOpacity>
 
-        {/* Tabs Section */}
-        <View style={styles.tabBar}>
-          {["description", "feedback"].map((tab) => (
+              {product.stock && (
+                <Text style={styles.stockInfo}>Available: {product.stock}</Text>
+              )}
+            </View>
+
             <TouchableOpacity
-              key={tab}
-              onPress={() => setActiveTab(tab)}
-              style={[styles.tabButton, activeTab === tab && styles.activeTab]}
+              style={styles.addButton}
+              onPress={handleAddToCartClick}
             >
-              <Text
+              <Text style={styles.addText}>Add to Cart</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.categoryTags}>
+              <Text style={styles.bold}>Category:</Text>{" "}
+              {product.category?.name || "Uncategorized"}
+            </Text>
+            <Text style={styles.categoryTags}>
+              <Text style={styles.bold}>Tags:</Text>{" "}
+              {product.tags?.length ? product.tags.join(", ") : "No tags"}
+            </Text>
+          </View>
+
+          {/* Tabs Section */}
+          <View style={styles.tabBar}>
+            {["description", "feedback"].map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                onPress={() => setActiveTab(tab)}
                 style={[
-                  styles.tabText,
-                  activeTab === tab
-                    ? styles.tabActiveText
-                    : styles.tabInactiveText,
+                  styles.tabButton,
+                  activeTab === tab && styles.activeTab,
                 ]}
               >
-                {tab === "description" ? "Description" : "Feedback"}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === tab
+                      ? styles.tabActiveText
+                      : styles.tabInactiveText,
+                  ]}
+                >
+                  {tab === "description" ? "Description" : "Feedback"}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-        {/* Tab Content Section */}
-        {activeTab === "description" ? (
-          <Text style={styles.tabContent}>{product.description}</Text>
-        ) : (
-          <CustomerFeedback feedback={customerFeedback || []} />
-        )}
-      </ScrollView>
-    </View>
+          {/* Tab Content Section */}
+          {activeTab === "description" ? (
+            <Text style={styles.tabContent}>{product.description}</Text>
+          ) : (
+            <CustomerFeedbackContainer type="product" id={product.id} />
+          )}
+        </ScrollView>
+      </View>
+    </KeyboardAvoidingView>
   );
 };
 

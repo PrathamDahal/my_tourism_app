@@ -5,56 +5,61 @@ import {
   TouchableOpacity,
   ScrollView,
   ImageBackground,
+  Image,
+  ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { useAuth } from "../../../context/AuthContext"; // adjust path if needed
+import { useAuth } from "../../../context/AuthContext";
 import UserProfile from "../../../custom/UserProfile";
-import LogoutButton from "../../../custom/LogoutButton";
+import Icon from "react-native-vector-icons/FontAwesome";
 
 const MainNavigationMenuScreen = () => {
   const navigation = useNavigation();
   const { userToken, isLoading } = useAuth();
 
   if (isLoading) {
-    return <Text>Loading...</Text>;
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4A90E2" />
+      </View>
+    );
   }
 
   const options = [
     {
-      label: "Home",
-      screen: "HomeStack",
-      image: require("../../../../assets/Images/Menu/home.jpg"),
-      description: "Explore our home offerings and updates.",
-    },
-    {
       label: "Explore",
       screen: "WhereToGoStack",
-      image: require("../../../../assets/Images/Menu/explore.jpg"),
-      description: "Find places to visit and things to do.",
-    },
-    {
-      label: "Stays",
-      screen: "WhereToStayStack",
-      image: require("../../../../assets/Images/Menu/stays.jpg"),
-      description: "Browse top-rated hotels and accommodations.",
-    },
-    {
-      label: "Products",
-      screen: "LocalProductsStack",
-      image: require("../../../../assets/Images/Menu/products.jpg"),
-      description: "Shop authentic local products.",
-    },
-    {
-      label: "Contact Us",
-      screen: "ContactUs",
-      image: require("../../../../assets/Images/Menu/contact.jpg"),
-      description: "Get in touch with our support team.",
+      icon: "map-marker",
+      color: "#FF6B6B",
+      description: "Find amazing places to visit",
     },
     {
       label: "Travel Packages",
       screen: "ContactUs",
-      image: require("../../../../assets/Images/Menu/travel.jpg"),
-      description: "Explore customized travel packages.",
+      icon: "suitcase",
+      color: "#FF8E6E",
+      description: "Find curated travel experiences",
+    },
+    {
+      label: "Stays",
+      screen: "WhereToStayStack",
+      icon: "hotel",
+      color: "#6BCB77",
+      description: "Browse accommodations and hotels",
+    },
+    {
+      label: "Products",
+      screen: "LocalProductsStack",
+      icon: "shopping-bag",
+      color: "#FFD93D",
+      description: "Shop local products and crafts",
+    },
+    {
+      label: "Contact Us",
+      screen: "ContactUs",
+      icon: "envelope",
+      color: "#A45CFF",
+      description: "Get in touch with us",
     },
     ...(!userToken
       ? [
@@ -62,139 +67,158 @@ const MainNavigationMenuScreen = () => {
             label: "Login",
             parent: "Auth",
             screen: "Login",
-            image: require("../../../../assets/Images/Menu/login.jpg"),
-            description: "Access your account securely.",
+            icon: "sign-in",
+            color: "#6BCB77",
+            description: "Access your account",
           },
           {
             label: "Sign Up",
             parent: "Auth",
             screen: "SignUp",
-            image: require("../../../../assets/Images/Menu/register.jpg"),
-            description: "Create a new account and get started.",
+            icon: "user-plus",
+            color: "#A45CFF",
+            description: "Create a new account",
           },
         ]
       : []),
   ];
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <ImageBackground
-        source={require("../../../../assets/Images/Menu/main-menu-banner.jpg")}
-        style={styles.headerImage}
-        imageStyle={{ borderBottomLeftRadius: 20, borderBottomRightRadius: 20 }}
-      >
-        {userToken && (
-          <View style={styles.profile}>
-            <UserProfile />
-          </View>
-        )}
-        {/* <LogoutButton /> */}
-
+    <View style={styles.container}>
+      {userToken ? (
+        <UserProfile />
+      ) : (
         <View style={styles.overlay}>
           <Text style={styles.location}>Panchpokhari Tourism</Text>
           <Text style={styles.country}>📍 Nepal</Text>
         </View>
-      </ImageBackground>
+      )}
 
-      <View style={styles.cardList}>
-        {options.map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.cardContainer}
-            onPress={() =>
-              item.parent
-                ? navigation.navigate(item.parent, { screen: item.screen })
-                : navigation.navigate(item.screen)
-            }
-          >
-            <ImageBackground
-              source={item.image}
-              style={styles.cardImage}
-              imageStyle={{ borderRadius: 15 }}
-            >
-              <View style={styles.cardOverlay}>
-                <Text style={styles.cardTitle}>{item.label}</Text>
-                <Text style={styles.cardSubtitle}>{item.description}</Text>
-              </View>
-            </ImageBackground>
-          </TouchableOpacity>
-        ))}
+      <View style={styles.textContainer}>
+        <Text style={styles.tourism}>Tourism</Text>
+        <Text style={styles.welcomeText}>Discover your next adventure</Text>
       </View>
-    </ScrollView>
+
+      {/* Menu Grid */}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.menuGrid}>
+          {options.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.menuItem}
+              activeOpacity={0.8}
+              onPress={() =>
+                item.parent
+                  ? navigation.navigate(item.parent, { screen: item.screen })
+                  : navigation.navigate(item.screen)
+              }
+            >
+              <View style={[styles.iconContainer]}>
+                <Icon name={item.icon} size={40} color={item.color} />
+              </View>
+              <Text style={styles.menuLabel}>{item.label}</Text>
+              <Text style={styles.menuDescription}>{item.description}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#F5F7FA",
   },
-  headerImage: {
-    position: "relative",
-    zIndex: 10,
-    height: 250,
-    justifyContent: "flex-end",
-    padding: 20,
-  },
-  profile: {
-    position: "absolute",
-    paddingVertical: 4,
-    paddingLeft: 5,
-    borderRadius: 999,
-    zIndex: 20,
-    top: 35,
-    right: 4,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F5F7FA",
   },
   overlay: {
-    backgroundColor: "rgba(0,0,0,0.4)",
-    padding: 10,
-    borderRadius: 10,
+    backgroundColor: "#C62828",
+    padding: 15,
+    paddingTop: 40,
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
   },
   location: {
     fontSize: 24,
     color: "#fff",
-    fontWeight: "bold",
+    fontWeight: "800",
+    textShadowColor: "rgba(0,0,0,0.3)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   country: {
     fontSize: 16,
     color: "#fff",
-    marginTop: 4,
+    marginTop: 5,
+    fontWeight: "600",
   },
-  cardList: {
-    marginTop: 10,
-    paddingHorizontal: 10,
+  textContainer: {
+    marginTop: 8,
+    marginHorizontal: 32,
   },
-  cardContainer: {
-    width: "100%",
-    aspectRatio: 2.1,
-    marginBottom: 15,
-    borderRadius: 15,
-    overflow: "hidden",
-    backgroundColor: "#e0e0e0",
-    elevation: 4,
+  tourism: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#000",
+    maxWidth: 180,
+  },
+  welcomeText: {
+    fontSize: 18,
+    color: "#777676ff",
+    marginTop: 2,
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
+  menuGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    paddingHorizontal: 32,
+    paddingTop: 20,
+  },
+  menuItem: {
+    width: "48%",
+    alignItems: "center",
+    marginBottom: 16,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    paddingVertical: 15,
     shadowColor: "#000",
-    shadowOffset: { width: 2, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  cardImage: {
-    flex: 1,
-    justifyContent: "flex-end",
+  iconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 5,
   },
-  cardOverlay: {
-    backgroundColor: "rgba(0,0,0,0.4)",
-    padding: 15,
+  menuLabel: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#070707ff",
+    textAlign: "center",
   },
-  cardTitle: {
-    fontSize: 20,
-    color: "#fff",
-    fontWeight: "bold",
-    marginBottom: 6,
-  },
-  cardSubtitle: {
+  menuDescription: {
+    marginHorizontal: 4,
     fontSize: 14,
-    color: "#f0f0f0",
-    marginBottom: 10,
+    color: "#718096",
+    textAlign: "center",
+    lineHeight: 16,
   },
 });
 
