@@ -15,6 +15,7 @@ import { useLoginMutation } from "../../services/auth/authApiSlice";
 import ForgetPasswordModal from "../../custom/ForgetPasswordModal"; // Make sure this modal is React Native compatible
 import { Feather } from "@expo/vector-icons";
 import { useAuth } from "./../../context/AuthContext";
+import { fontNames } from "../../config/font";
 
 const LoginForm = () => {
   const [email, setEmail] = useState("");
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
     fontWeight: "300",
     color: "#FBBF24", // yellow-400
     marginBottom: 10,
-    fontFamily: "italiano", // Load this font with expo-font if needed
+    fontFamily: fontNames.openSans.regular,
     textAlign: "center",
   },
   image: {
@@ -166,6 +167,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
+    fontFamily: fontNames.openSans.regular,
     color: "#4B5563", // gray-700
     marginBottom: 6,
   },
@@ -223,6 +225,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#fff",
     fontSize: 18,
+    fontFamily: fontNames.openSans.regular,
     fontWeight: "600",
   },
   errorText: {
@@ -237,6 +240,7 @@ const styles = StyleSheet.create({
   createAccountText: {
     color: "#e63946",
     fontSize: 16,
+    fontFamily: fontNames.openSans.regular,
     fontWeight: "semi-bold",
   },
 

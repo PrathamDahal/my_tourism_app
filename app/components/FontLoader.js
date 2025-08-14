@@ -1,5 +1,5 @@
 // components/FontLoader.js
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import * as Font from 'expo-font';
 import { fontAssets } from '../config/font';

@@ -12,6 +12,7 @@ import {
 import LoginForm from "./LoginForm";
 import { useRoute } from "@react-navigation/native";
 import { useEffect } from "react";
+import { fontNames } from "../../config/font";
 
 const { width } = Dimensions.get("window");
 
@@ -83,20 +84,22 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 30,
+    fontSize: 32,
     color: "red",
-    fontFamily: "redressed",
+    fontFamily: fontNames.redressed,
     textAlign: "center",
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 18,
     textAlign: "center",
+    fontFamily: fontNames.redressed,
     marginBottom: 10,
   },
   description: {
     fontSize: 14,
     color: "gray",
+    fontFamily: fontNames.poppins.regular,
     textAlign: "center",
   },
   rightSection: {

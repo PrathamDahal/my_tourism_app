@@ -14,6 +14,7 @@ import {
 import { destinations } from "../../../data/DestinationCarousel";
 import { useNavigation } from "@react-navigation/native";
 import Icon from "react-native-vector-icons/FontAwesome";
+import { MaterialIcons } from "@expo/vector-icons";
 
 const WhereToGo = () => {
   const navigation = useNavigation();
@@ -53,7 +54,10 @@ const WhereToGo = () => {
           style={styles.cardImage}
           resizeMode="cover"
         >
-          <Text style={styles.cardTitle}>{item.title}</Text>
+          <View style={styles.cardTitleContainer}>
+            <Icon name="map-marker" size={24} color="#fff" />
+            <Text style={styles.cardTitle}>{item.title}</Text>
+          </View>
         </ImageBackground>
         <Text style={styles.descriptionText} numberOfLines={3}>
           {displayText}
@@ -70,7 +74,7 @@ const WhereToGo = () => {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Icon name="arrow-left" size={32} color="#fff" />
+            <MaterialIcons name="arrow-back-ios" size={28} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.titleText}>Destinations</Text>
         </View>
@@ -228,18 +232,23 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.3)", // Semi-transparent black overlay
   },
-  cardTitle: {
+  cardTitleContainer: {
     position: "absolute",
+    flexDirection: "row", // ✅ Make icon & title side-by-side
+    alignItems: "center", // ✅ Align vertically
     bottom: 60,
     left: 10,
-    fontSize: 24,
+    zIndex: 1,
+  },
+  cardTitle: {
+    fontSize: 18,
     fontWeight: "800",
     color: "#ffffffff",
-    zIndex: 1,
+    marginLeft: 8, // ✅ small gap between icon & text
   },
   descriptionText: {
     position: "absolute",
-    padding:15,
+    padding: 15,
     bottom: 2,
     fontSize: 14,
     color: "#555",

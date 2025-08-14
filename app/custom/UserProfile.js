@@ -3,6 +3,7 @@ import Icon from "react-native-vector-icons/FontAwesome";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
 import { useFetchUserProfileQuery } from "../services/userApi";
+import { fontNames } from "../config/font";
 
 const UserProfile = () => {
   const navigation = useNavigation();
@@ -27,16 +28,16 @@ const UserProfile = () => {
             style={styles.avatar}
           />
           <View style={styles.textContainer}>
-            <Text style={styles.username} numberOfLines={1}>{username}</Text>
+            <Text style={styles.username} numberOfLines={1}>
+              {username}
+            </Text>
             <Text style={styles.welcomeText}>Welcome Back!</Text>
           </View>
         </TouchableOpacity>
       </View>
 
       <View style={styles.iconsContainer}>
-        <TouchableOpacity
-          style={styles.iconButton}
-        >
+        <TouchableOpacity style={styles.iconButton}>
           <Icon name="bell" size={24} color="#fff" />
         </TouchableOpacity>
 
@@ -53,7 +54,7 @@ const UserProfile = () => {
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
+    width: "100%",
     height: 120,
     flexDirection: "row",
     alignItems: "center",
@@ -74,19 +75,20 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 25,
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: "#fff",
   },
   textContainer: {
     marginLeft: 15,
   },
   username: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 18,
+    fontFamily: fontNames.nunito.regular,
     color: "#fff",
     maxWidth: 180,
   },
   welcomeText: {
     fontSize: 14,
+    fontFamily: fontNames.playfair.regular,
     color: "rgba(255,255,255,0.9)",
     marginTop: 2,
   },
@@ -98,7 +100,7 @@ const styles = StyleSheet.create({
     marginLeft: 15,
     padding: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: "rgba(255,255,255,0.2)",
   },
 });
 

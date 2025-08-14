@@ -4,14 +4,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  ImageBackground,
-  Image,
   ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../../../context/AuthContext";
 import UserProfile from "../../../custom/UserProfile";
 import Icon from "react-native-vector-icons/FontAwesome";
+import { fontNames } from "../../../config/font";
 
 const MainNavigationMenuScreen = () => {
   const navigation = useNavigation();
@@ -149,17 +148,17 @@ const styles = StyleSheet.create({
   },
   location: {
     fontSize: 24,
+    fontFamily: fontNames.openSans.regular,
     color: "#fff",
-    fontWeight: "800",
     textShadowColor: "rgba(0,0,0,0.3)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
   country: {
     fontSize: 16,
+    fontFamily: fontNames.openSans.regular,
     color: "#fff",
     marginTop: 5,
-    fontWeight: "600",
   },
   textContainer: {
     marginTop: 8,
@@ -167,12 +166,13 @@ const styles = StyleSheet.create({
   },
   tourism: {
     fontSize: 24,
-    fontWeight: "600",
+    fontFamily: fontNames.raleway.regular,
     color: "#000",
     maxWidth: 180,
   },
   welcomeText: {
     fontSize: 18,
+    fontFamily: fontNames.raleway.regular,
     color: "#777676ff",
     marginTop: 2,
   },
@@ -209,12 +209,12 @@ const styles = StyleSheet.create({
   },
   menuLabel: {
     fontSize: 18,
-    fontWeight: "600",
+    marginBottom:2,
+    fontFamily: fontNames.playfair.semiBold,
     color: "#070707ff",
     textAlign: "center",
   },
   menuDescription: {
-    marginHorizontal: 4,
     fontSize: 14,
     color: "#718096",
     textAlign: "center",
