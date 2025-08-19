@@ -1,5 +1,4 @@
 // components/AppText.js
-import React from 'react';
 import { Text } from 'react-native';
 import { fontNames } from '../config/font';
 

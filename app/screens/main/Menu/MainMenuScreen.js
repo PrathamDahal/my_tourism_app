@@ -34,13 +34,13 @@ const MainNavigationMenuScreen = () => {
     },
     {
       label: "Travel Packages",
-      screen: "ContactUs",
+      screen: "TravelPackageStack",
       icon: "suitcase",
       color: "#FF8E6E",
       description: "Find curated travel experiences",
     },
     {
-      label: "Stays",
+      label: "HomeStays",
       screen: "WhereToStayStack",
       icon: "hotel",
       color: "#6BCB77",

@@ -24,7 +24,6 @@ const RatingStars = ({ rating }) => {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    marginTop: 8,
     justifyContent: 'center', // center by default; change if needed
   },
   star: {

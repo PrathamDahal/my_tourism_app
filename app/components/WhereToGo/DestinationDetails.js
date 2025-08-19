@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-evenly",
     borderRadius: 10,
-    paddingVertical: 6,
+    paddingVertical: 2,
     backgroundColor: "#C62828",
     borderBottomWidth: 1,
     borderBottomColor: "#e21e1eff",
@@ -305,15 +305,12 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     width: "32%",
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 14,
-    borderBottomWidth: 2,
-    borderBottomColor: "transparent",
     borderRadius: 10,
   },
   activeTabButton: {
     backgroundColor: "#fff",
-    borderBottomColor: "#b22222",
   },
   tabText: {
     fontSize: 16,

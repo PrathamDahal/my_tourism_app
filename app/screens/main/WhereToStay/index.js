@@ -6,13 +6,15 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  TextInput,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import StayOptions from "../../../components/WhereToStay/StayOptions";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import FilterComponent from "../../../components/WhereToStay/FilterComponent";
 import { stays } from "../../../data/StayOptions";
 import Pagination from "./../../../custom/Pagination";
 import { useNavigation } from "@react-navigation/native";
+import { fontNames } from "../../../config/font";
+import Icon from "react-native-vector-icons/FontAwesome";
 import RatingStars from "../../../custom/RatingStars";
 
 const WhereToStay = () => {
@@ -27,12 +29,13 @@ const WhereToStay = () => {
     subcategory: "", // controlled by StayOptions
     tags: [], // controlled by FilterComponent
   });
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [filteredProducts, setFilteredProducts] = useState(stays);
 
-  // Update when filters change
+  // Update when filters or search query change
   useEffect(() => {
     let filtered = stays;
 
@@ -57,9 +60,15 @@ const WhereToStay = () => {
       filtered = filtered.filter((item) => item.rating >= filters.minRating);
     }
 
+    if (searchQuery) {
+      filtered = filtered.filter((item) =>
+        item.title.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
     setFilteredProducts(filtered);
     setCurrentPage(1);
-  }, [filters]);
+  }, [filters, searchQuery]);
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
   const currentItems = filteredProducts.slice(
@@ -71,39 +80,41 @@ const WhereToStay = () => {
     setShowFilter(false);
   };
 
-  // Called when StayOptions filter is clicked
-  const handleTypeSelect = (type) => {
-    setFilters((prev) => ({
-      ...prev,
-      subcategory: type === "All" ? "" : type,
-    }));
-  };
-
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.header}>Where To Stay</Text>
-      <Text style={styles.subHeader}>
-        Find the perfect accommodation for your trip
-      </Text>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.title}>
+        <View style={styles.leftGroup}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <MaterialIcons name="arrow-back-ios" size={28} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.titleText}>HomeStays</Text>
+        </View>
+        <TouchableOpacity style={styles.iconButton}>
+          <Icon name="bell" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
 
-      {/* First filter: Stay type */}
-      <StayOptions onSelectType={handleTypeSelect} />
-
-      {/* Second filter: Additional tags, price, rating etc */}
-      <TouchableOpacity
-        style={styles.filterButton}
-        onPress={() => setShowFilter((prev) => !prev)}
-      >
-        <View style={styles.filterButtonContent}>
-          <Text style={styles.filterButtonText}>Filter by...</Text>
-          <Ionicons
-            name={showFilter ? "chevron-up" : "chevron-down"}
-            size={20}
-            color="#fff"
-            style={styles.filterButtonIcon}
+      {/* Search and filter row */}
+      <View style={styles.searchFilterRow}>
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search HomeStays..."
+            placeholderTextColor="#888"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
           />
         </View>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={() => setShowFilter((prev) => !prev)}
+        >
+          <MaterialIcons name="filter-list" size={24} color="#000" />
+        </TouchableOpacity>
+      </View>
 
       {showFilter && (
         <FilterComponent
@@ -115,7 +126,6 @@ const WhereToStay = () => {
         />
       )}
 
-      {/* Products */}
       <View style={styles.productsGrid}>
         {currentItems.map((stay) => (
           <TouchableOpacity
@@ -129,12 +139,29 @@ const WhereToStay = () => {
               style={styles.productImage}
               resizeMode="cover"
             />
-            <Text style={styles.productName}>{stay.title}</Text>
-            <Text style={styles.productDesc} numberOfLines={2}>
-              {stay.location}
-            </Text>
-            <Text style={styles.productPrice}>Rs. {stay.price}</Text>
-            {stay.rating && <RatingStars rating={stay.rating} />}
+            <View style={styles.productInfoContainer}>
+              <View style={styles.productHeader}>
+                <Text style={styles.productName} numberOfLines={1}>
+                  {stay.title}
+                </Text>
+                <View style={styles.ratingContainer}>
+                  <RatingStars rating={stay.rating} />
+                  <Text style={styles.ratingText}>
+                    {stay.rating?.toFixed(1)}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.locationContainer}>
+                <Ionicons name="location-sharp" size={16} color="#888" />
+                <Text style={styles.productDesc} numberOfLines={1}>
+                  {stay.location}
+                </Text>
+              </View>
+              <View style={styles.priceContainer}>
+                <Text style={styles.productPrice}>Npr {stay.price}</Text>
+                <Text style={styles.perNightText}>/ night</Text>
+              </View>
+            </View>
           </TouchableOpacity>
         ))}
       </View>
@@ -160,80 +187,154 @@ const WhereToStay = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 32,
     backgroundColor: "#f9f9f9",
   },
-  header: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 5,
-    color: "#333",
-  },
-  subHeader: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 20,
-  },
-  filterButton: {
-    width: "50%",
-    backgroundColor: "#e53935",
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  filterButtonContent: {
+  title: {
+    marginTop: -1,
+    backgroundColor: "#C62828",
+    padding: 15,
+    paddingTop: 40,
+    marginBlock: 10,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
   },
-  filterButtonIcon: {
-    marginLeft: 8,
+  leftGroup: {
+    flexDirection: "row",
+    alignItems: "center",
   },
-  filterButtonText: {
+  backButton: {
+    marginRight: 10,
+    padding: 5,
+  },
+  titleText: {
+    fontSize: 24,
     color: "#fff",
+    fontFamily: fontNames.nunito.regular,
+    textShadowColor: "rgba(0,0,0,0.3)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  iconButton: {
+    marginLeft: 15,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  searchFilterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    gap: 3, // spacing between search and filter
+  },
+  searchContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 8,
+    overflow: "hidden", // clip icon inside border
+    height: 45,
+  },
+  searchInput: {
+    flex: 1,
+    paddingHorizontal: 12,
     fontSize: 16,
-    fontWeight: "600",
+    fontFamily: fontNames.playfair.regular,
+    width: "78%",
+    height: "100%",
+  },
+  filterButton: {
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
   },
   productsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
+    paddingHorizontal: 8,
   },
   productCard: {
-    width: "48%",
+    width: "100%",
     backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 15,
+    borderRadius: 12,
+    marginBottom: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 6,
+    elevation: 3,
+    overflow: "hidden",
   },
   productImage: {
     width: "100%",
-    height: 120,
-    borderRadius: 10,
-    marginBottom: 8,
+    height: 200,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  productInfoContainer: {
+    padding: 12,
+  },
+  productHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
   },
   productName: {
-    fontWeight: "bold",
+    fontFamily: fontNames.raleway.medium,
     fontSize: 16,
-    marginBottom: 4,
     color: "#333",
+    flex: 1,
+    marginRight: 8,
+  },
+  ratingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  ratingText: {
+    marginLeft: 4,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+  },
+  locationContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
   },
   productDesc: {
     fontSize: 14,
     color: "#666",
-    marginBottom: 6,
+    fontFamily: fontNames.raleway.medium,
+    marginLeft: 4,
+    flex: 1,
+  },
+  priceContainer: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   productPrice: {
-    fontWeight: "bold",
-    fontSize: 16,
-    color: "green",
+    fontFamily: fontNames.allura,
+    fontSize: 18,
+    color: "#1e8229ff",
+  },
+  perNightText: {
+    fontSize: 14,
+    color: "#888",
+    marginLeft: 4,
+    marginBottom: 1,
   },
   tipContainer: {
     flexDirection: "row",
@@ -242,9 +343,11 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     marginTop: 10,
+    marginBottom: 20,
   },
   tipText: {
     marginLeft: 10,
+    fontFamily: fontNames.nunito.regular,
     fontSize: 14,
     color: "#333",
   },

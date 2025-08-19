@@ -6,6 +6,7 @@ import LocalProductsStack from "./LocalProductsStack";
 import WhereToGoStack from "./WhereToGoStack";
 import WhereToStayStack from "./WhereToStayStack";
 import MainNavigationMenuScreen from '../screens/main/Menu/MainMenuScreen';
+import TravelPackageStack from './TravelPackageStack';
 
 const Stack = createNativeStackNavigator();
 
@@ -17,6 +18,7 @@ const MainMenuStack = () => {
       <Stack.Screen name="WhereToGoStack" component={WhereToGoStack} />
       <Stack.Screen name="WhereToStayStack" component={WhereToStayStack} />
       <Stack.Screen name="LocalProductsStack" component={LocalProductsStack} />
+      <Stack.Screen name="TravelPackageStack" component={TravelPackageStack} />
       <Stack.Screen name="ContactUs" component={ContactUs} />
     </Stack.Navigator>
   );

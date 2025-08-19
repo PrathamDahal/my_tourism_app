@@ -10,11 +10,13 @@ import {
   Platform,
   Dimensions,
   ImageBackground,
+  Image,
 } from "react-native";
 import { destinations } from "../../../data/DestinationCarousel";
 import { useNavigation } from "@react-navigation/native";
 import Icon from "react-native-vector-icons/FontAwesome";
 import { MaterialIcons } from "@expo/vector-icons";
+import { fontNames } from "../../../config/font";
 
 const WhereToGo = () => {
   const navigation = useNavigation();
@@ -49,16 +51,17 @@ const WhereToGo = () => {
           navigation.navigate("DestinationDetails", { destination: item })
         }
       >
-        <ImageBackground
-          source={{ uri: item.image[0]?.url || "fallback_image_uri" }}
-          style={styles.cardImage}
-          resizeMode="cover"
-        >
+        <View style={styles.imageContainer}>
+          <Image
+            source={{ uri: item.image[0]?.url || "fallback_image_uri" }}
+            style={styles.cardImage}
+            resizeMode="cover"
+          />
           <View style={styles.cardTitleContainer}>
             <Icon name="map-marker" size={24} color="#fff" />
             <Text style={styles.cardTitle}>{item.title}</Text>
           </View>
-        </ImageBackground>
+        </View>
         <Text style={styles.descriptionText} numberOfLines={3}>
           {displayText}
         </Text>
@@ -160,11 +163,16 @@ const styles = StyleSheet.create({
   titleText: {
     fontSize: 24,
     color: "#fff",
-    fontWeight: "800",
+    fontFamily: fontNames.nunito.regular,
     textShadowColor: "rgba(0,0,0,0.3)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
-    letterSpacing: 2,
+  },
+  iconButton: {
+    marginLeft: 15,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
   },
   searchContainer: {
     flexDirection: "row",
@@ -218,33 +226,34 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     height: 300, // Fixed height or adjust as needed
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  imageContainer: {
+    position: "relative",
   },
   cardImage: {
-    position: "relative",
-    height: "90%",
+    height: "85%",
     padding: 12,
-  },
-  imageOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.3)", // Semi-transparent black overlay
   },
   cardTitleContainer: {
     position: "absolute",
-    flexDirection: "row", // ✅ Make icon & title side-by-side
-    alignItems: "center", // ✅ Align vertically
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 5,
+    borderRadius: 10,
+    backgroundColor: "rgba(0,0,0,0.4)",
     bottom: 60,
     left: 10,
     zIndex: 1,
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: "800",
+    fontFamily: fontNames.openSans.semibold,
     color: "#ffffffff",
-    marginLeft: 8, // ✅ small gap between icon & text
+    marginLeft: 8,
   },
   descriptionText: {
     position: "absolute",
@@ -264,12 +273,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "600",
     fontSize: 14,
-  },
-  iconButton: {
-    marginLeft: 15,
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.2)",
   },
 });
 

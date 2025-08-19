@@ -6,6 +6,7 @@ export const fontAssets = {
   "Playfair-Regular": require("../../assets/Fonts/Playfair/PlayfairDisplay-Regular.ttf"),
   "Playfair-SemiBold": require("../../assets/Fonts/Playfair/PlayfairDisplay-SemiBold.ttf"),
   "OpenSans-Regular": require("../../assets/Fonts/Open/OpenSans-Regular.ttf"),
+  "OpenSans-Semibold": require("../../assets/Fonts/Open/OpenSans-SemiBold.ttf"),
   "Redressed": require("../../assets/Fonts/Redressed-Regular.ttf"),
   "Poppins-Regular": require("../../assets/Fonts/Poppin/Poppins-Regular.ttf"),
   "Italianno": require("../../assets/Fonts/Italianno-Regular.ttf"),
@@ -27,6 +28,7 @@ export const fontNames = {
   },
   openSans: {
     regular: "OpenSans-Regular",
+    semibold: "OpenSans-Semibold",
   },
   redressed: "Redressed",
   poppins: {
