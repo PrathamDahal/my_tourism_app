@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -7,23 +7,31 @@ import {
   Image,
   TextInput,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { travelPackages } from "../../../data/TravelPackages";
 import Icon from "react-native-vector-icons/FontAwesome";
 import { fontNames } from "../../../config/font";
 import RatingStars from "../../../custom/RatingStars";
+import { useGetTravelPackagesQuery } from "../../../services/travelPackagesApi";
 
 const TravelPackagesScreen = () => {
   const [search, setSearch] = useState("");
   const navigation = useNavigation();
 
+  const {
+    data: travelPackages,
+    isLoading,
+    isError,
+    error,
+  } = useGetTravelPackagesQuery();
+
   const renderPackage = ({ item }) => (
     <TouchableOpacity
       style={styles.card}
       onPress={() =>
-        navigation.navigate("TravelPackageDetails", { packageData : item })
+        navigation.navigate("TravelPackageDetails", { packageData: item })
       }
     >
       <Image source={{ uri: item.imageUrls[0]?.url }} style={styles.image} />
@@ -38,7 +46,6 @@ const TravelPackagesScreen = () => {
           <Text style={styles.price}>Npr {item.price} </Text>
           <Text style={styles.person}>/person</Text>
         </View>
-
         <View style={styles.rating}>
           <RatingStars rating={item.rating} />
           <Text style={styles.ratingText}>{item.rating}</Text>
@@ -46,6 +53,22 @@ const TravelPackagesScreen = () => {
       </View>
     </TouchableOpacity>
   );
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color="#C62828" />
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <Text>{error?.message || "Failed to load travel packages"}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -85,7 +108,9 @@ const TravelPackagesScreen = () => {
 
       {/* Package List */}
       <FlatList
-        data={travelPackages}
+        data={travelPackages?.filter((item) =>
+          item.title.toLowerCase().includes(search.toLowerCase())
+        )}
         keyExtractor={(item) => item.id}
         renderItem={renderPackage}
         contentContainerStyle={{ paddingBottom: 20 }}
@@ -101,7 +126,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
-  // HEADER
   header: {
     backgroundColor: "#C62828",
     paddingHorizontal: 15,
@@ -129,8 +153,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.2)",
   },
-
-  // SEARCH BAR
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -156,8 +178,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
   },
-
-  // CARD
   card: {
     backgroundColor: "#fff",
     borderRadius: 10,

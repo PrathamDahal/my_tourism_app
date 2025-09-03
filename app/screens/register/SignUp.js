@@ -13,21 +13,31 @@ import {
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { useNavigation } from "@react-navigation/native";
-import { useRegisterUserMutation } from "../../services/registerApi";
 import { Modal, FlatList } from "react-native";
 import { AntDesign } from "@expo/vector-icons";
 import { useState } from "react";
+import * as ImagePicker from "expo-image-picker";
+import { useCreateUserMutation } from "../../services/registerApi";
+import { fontNames } from "../../config/font";
 
 const RegisterScreen = () => {
   const navigation = useNavigation();
-  const [registerUser, { isLoading }] = useRegisterUserMutation();
+  const [createUser, { isLoading }] = useCreateUserMutation();
   const [showRoleModal, setShowRoleModal] = useState(false);
+  const [showGenderModal, setShowGenderModal] = useState(false);
+
   const roleOptions = [
-    { label: "Normal", value: "normal" },
-    { label: "Admin", value: "admin" },
-    { label: "Seller", value: "seller" },
-    { label: "Host", value: "host" },
-    { label: "Travel Agency", value: "travel agency" },
+    { label: "Normal", value: "NORMAL" },
+    { label: "Admin", value: "ADMIN" },
+    { label: "Seller", value: "SELLER" },
+    { label: "Host", value: "HOST" },
+    { label: "Travel Agency", value: "TRAVELAGENCY" },
+  ];
+
+  const genderOptions = [
+    { label: "Male", value: "MALE" },
+    { label: "Female", value: "FEMALE" },
+    { label: "Other", value: "OTHERS" },
   ];
 
   const validationSchema = Yup.object().shape({
@@ -37,10 +47,8 @@ const RegisterScreen = () => {
     phone: Yup.string().required("Phone is required"),
     username: Yup.string().required("Username is required"),
     password: Yup.string().min(8).required("Password is required"),
-    confirmPassword: Yup.string()
-      .oneOf([Yup.ref("password"), null], "Passwords must match")
-      .required("Confirm password is required"),
     role: Yup.string().required("Role is required"),
+    gender: Yup.string().required("Gender is required"),
   });
 
   const formik = useFormik({
@@ -52,14 +60,16 @@ const RegisterScreen = () => {
       phone: "",
       username: "",
       password: "",
-      confirmPassword: "",
       role: "",
+      gender: "",
+      permanentAddress: "",
+      temporaryAddress: "",
+      images: null,
     },
     validationSchema,
     onSubmit: async (values, { setSubmitting }) => {
       try {
-        const { confirmPassword, ...payload } = values;
-        const res = await registerUser(payload).unwrap();
+        const res = await createUser(values).unwrap();
         if (res.success) {
           navigation.navigate("Login");
         }
@@ -70,6 +80,19 @@ const RegisterScreen = () => {
       }
     },
   });
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.Images, 
+      allowsEditing: true,
+      quality: 1,
+      base64: true, 
+    });
+
+    if (!result.cancelled && result.base64) {
+      formik.setFieldValue("images", `/uploads/${result.base64}`);
+    }
+  };
 
   const renderField = (label, name, options = {}) => (
     <View style={styles.field}>
@@ -92,44 +115,43 @@ const RegisterScreen = () => {
     </View>
   );
 
-  const renderRoleSelector = () => (
+  const renderDropdown = (label, name, options, showModal, setShowModal) => (
     <View style={styles.field}>
-      <Text style={styles.label}>Role*</Text>
+      <Text style={styles.label}>{label}*</Text>
       <TouchableOpacity
         style={[
           styles.dropdownButton,
-          formik.touched.role && formik.errors.role && styles.errorInput,
+          formik.touched[name] && formik.errors[name] && styles.errorInput,
         ]}
-        onPress={() => setShowRoleModal(true)}
+        onPress={() => setShowModal(true)}
       >
-        <Text style={{ color: formik.values.role ? "#000" : "#aaa" }}>
-          {formik.values.role
-            ? roleOptions.find((r) => r.value === formik.values.role)?.label
-            : "Select your role"}
+        <Text style={{ color: formik.values[name] ? "#000" : "#aaa" }}>
+          {formik.values[name]
+            ? options.find((r) => r.value === formik.values[name])?.label
+            : `Select your ${label.toLowerCase()}`}
         </Text>
         <AntDesign name="down" size={16} color="#888" />
       </TouchableOpacity>
 
-      {formik.touched.role && formik.errors.role && (
-        <Text style={styles.errorText}>{formik.errors.role}</Text>
+      {formik.touched[name] && formik.errors[name] && (
+        <Text style={styles.errorText}>{formik.errors[name]}</Text>
       )}
 
-      {/* Dropdown Modal */}
-      <Modal visible={showRoleModal} transparent animationType="fade">
+      <Modal visible={showModal} transparent animationType="fade">
         <TouchableOpacity
           style={styles.modalOverlay}
-          onPress={() => setShowRoleModal(false)}
+          onPress={() => setShowModal(false)}
         >
           <View style={styles.modalContent}>
             <FlatList
-              data={roleOptions}
+              data={options}
               keyExtractor={(item) => item.value}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.modalItem}
                   onPress={() => {
-                    formik.setFieldValue("role", item.value);
-                    setShowRoleModal(false);
+                    formik.setFieldValue(name, item.value);
+                    setShowModal(false);
                   }}
                 >
                   <Text>{item.label}</Text>
@@ -149,19 +171,20 @@ const RegisterScreen = () => {
     >
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.leftSection}>
+          {" "}
           <Image
             source={require("../../../assets/T-App-icon.png")}
             style={styles.image}
             resizeMode="cover"
-          />
-          <Text style={styles.appTitle}>Panchpokhari Tourism</Text>
-          <Text style={styles.subtitle}>PanchPokhari Thangpal Gaupailka</Text>
+          />{" "}
+          <Text style={styles.appTitle}>Panchpokhari Tourism</Text>{" "}
+          <Text style={styles.subtitle}>PanchPokhari Thangpal Gaupailka</Text>{" "}
           <Text style={styles.description}>
+            {" "}
             Discover authentic destinations and unforgettable experiences
-            tailored for every traveler.
-          </Text>
+            tailored for every traveler.{" "}
+          </Text>{" "}
         </View>
-
         <Text style={styles.title}>Create Account</Text>
 
         <View style={styles.section}>
@@ -171,20 +194,40 @@ const RegisterScreen = () => {
           {renderField("Last Name*", "lastName")}
           {renderField("Email*", "email", { keyboard: "email-address" })}
           {renderField("Phone*", "phone", { keyboard: "phone-pad" })}
+          {renderField("Permanent Address", "permanentAddress")}
+          {renderField("Temporary Address", "temporaryAddress")}
+          <Text style={styles.label}>Image</Text>
+          <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
+            <Text style={{ fontSize: 16 }}>
+              {formik.values.images
+                ? "Change Profile Image"
+                : "Select Profile Image"}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account Info</Text>
           {renderField("Username*", "username")}
           {renderField("Password*", "password", { secure: true })}
-          {renderField("Confirm Password*", "confirmPassword", {
-            secure: true,
-          })}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>User Role</Text>
-          {renderRoleSelector()}
+          <Text style={styles.sectionTitle}>Role & Gender</Text>
+          {renderDropdown(
+            "Role",
+            "role",
+            roleOptions,
+            showRoleModal,
+            setShowRoleModal
+          )}
+          {renderDropdown(
+            "Gender",
+            "gender",
+            genderOptions,
+            showGenderModal,
+            setShowGenderModal
+          )}
         </View>
 
         <TouchableOpacity
@@ -244,9 +287,16 @@ const styles = StyleSheet.create({
     marginTop: 6,
     paddingHorizontal: 10,
   },
+  imagePicker: {
+    borderColor: "#ccc",
+    borderWidth: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: "center",
+  },
   title: {
     fontSize: 26,
-    fontWeight: "700",
+    fontFamily: fontNames.raleway.regular,
     color: "#e3342f",
     textAlign: "center",
     marginVertical: 20,
@@ -260,7 +310,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: "600",
+    fontFamily: fontNames.poppins.regular,
     marginBottom: 12,
     color: "#333",
   },
@@ -269,7 +319,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 13,
-    fontWeight: "500",
+    fontFamily: fontNames.poppins.regular,
     color: "#555",
     marginBottom: 4,
   },

@@ -1,4 +1,4 @@
-import { useContext, useRef, useState } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -13,11 +13,9 @@ import {
   Platform,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
-import CustomerFeedback from "./CustomerFeedback";
 import { useGetProductBySlugQuery } from "../../../services/productApi";
 import { useAddToCartMutation } from "../../../services/cartApi";
 import RatingStars from "./../../../custom/RatingStars";
-import { customerFeedback } from "../../../data/CustomerFeedback";
 import { API_BASE_URL } from "../../../../config";
 import CustomerFeedbackContainer from "./CustomerFeedbackContainer";
 
@@ -107,15 +105,21 @@ const ProductDetails = () => {
   );
 
   const mainImage = images.length ? images[selectedImageIndex] : null;
+  const getImageUri = (img) => {
+    if (!img) return null;
+    return img.startsWith("http")
+      ? img
+      : `${API_BASE_URL.replace(/\/$/, "")}/${img.replace(/^\/+/, "")}`;
+  };
 
   return (
     <KeyboardAvoidingView
+      style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 20}
     >
-      <View style={styles.container}>
-        <ScrollView>
-          {/* Image Gallery Section */}
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        <View style={styles.container}>
           <View style={styles.galleryContainer}>
             <FlatList
               horizontal
@@ -123,7 +127,7 @@ const ProductDetails = () => {
               renderItem={renderThumbnail}
               keyExtractor={(item, index) => index.toString()}
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.thumbnailList}
+              contentContainerStyle={{ paddingHorizontal: 12 }}
             />
 
             {showErrorToast && (
@@ -134,7 +138,7 @@ const ProductDetails = () => {
 
             {mainImage && (
               <Image
-                source={{ uri: `${API_BASE_URL}/${mainImage}` }}
+                source={{ uri: getImageUri(mainImage) }}
                 style={styles.mainImage}
                 resizeMode="contain"
               />
@@ -234,8 +238,8 @@ const ProductDetails = () => {
           ) : (
             <CustomerFeedbackContainer type="product" id={product.id} />
           )}
-        </ScrollView>
-      </View>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 };

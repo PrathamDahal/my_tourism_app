@@ -1,1 +1,1 @@
-export const API_BASE_URL = "https://tourism.smartptrm.com/api/v1";
+export const API_BASE_URL = "https://tourism.smartptrm.com/";

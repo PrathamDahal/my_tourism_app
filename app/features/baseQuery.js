@@ -1,10 +1,9 @@
 import { fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from "../../config";
 
 
 export const baseQuery = fetchBaseQuery({
-  baseUrl: API_BASE_URL,
+  baseUrl: "https://tourism.smartptrm.com/api/v1",
   prepareHeaders: async (headers) => {
     const token = await AsyncStorage.getItem("accessToken");
     if (token) {

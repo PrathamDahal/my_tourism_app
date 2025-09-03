@@ -6,6 +6,7 @@ import { authApiSlice } from './../services/auth/authApiSlice';
 import { registerApiSlice } from '../services/registerApi';
 import { userApi } from '../services/userApi';
 import { feedbackApi } from '../services/feedback';
+import { travelPackageApi } from '../services/travelPackagesApi';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     [authApiSlice.reducerPath]: authApiSlice.reducer,
     [registerApiSlice.reducerPath]: registerApiSlice.reducer,
     [feedbackApi.reducerPath]:feedbackApi.reducer,
+    [travelPackageApi.reducerPath]: travelPackageApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -25,7 +27,8 @@ export const store = configureStore({
       .concat(userApi.middleware)
       .concat(authApiSlice.middleware)
       .concat(registerApiSlice.middleware)
-      .concat(feedbackApi.middleware),
+      .concat(feedbackApi.middleware)
+      .concat(travelPackageApi.middleware),
 });
 
 export default store;
