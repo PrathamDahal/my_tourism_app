@@ -13,51 +13,31 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import RatingStars from "../../custom/RatingStars";
 import { fontNames } from "../../config/font";
+import { API_BASE_URL } from "../../../config";
 
 const TravelPackageDetails = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const { packageData } = route.params; // Pass selected package
   const [expanded, setExpanded] = useState(false);
-
-  const [activeTab, setActiveTab] = useState("Itinerary");
   const windowWidth = Dimensions.get("window").width;
   const isTablet =
     Platform.isPad || (Platform.OS === "android" && windowWidth >= 600);
   const limit = isTablet ? 1000 : 500;
+
   const toggleExpanded = () => {
     setExpanded(!expanded);
   };
-
-  // Dummy itinerary (you can expand based on package)
-  const itinerary = [
-    {
-      id: 1,
-      title: "Arrive In Tokyo",
-      desc: "Welcome meeting and orientation",
-    },
-    {
-      id: 2,
-      title: "Tokyo Exploration",
-      desc: "Visit Shibuya, Meiji Shrine, and Harajuku",
-    },
-    {
-      id: 3,
-      title: "Tokyo to Kyoto",
-      desc: "Bullet train journey and evening in Gion",
-    },
-    {
-      id: 4,
-      title: "Kyoto Temples",
-      desc: "Visit Kinkaku-ji and Fushimi Inari Shrine",
-    },
-  ];
 
   return (
     <ScrollView style={styles.container}>
       {/* HEADER IMAGE */}
       <ImageBackground
-        source={{ uri: packageData.imageUrls[0].url }}
+        source={
+          packageData.images?.[0]
+            ? { uri: `${API_BASE_URL}/${packageData.images[0]}` }
+            : { uri: "https://via.placeholder.com/600x400.png?text=No+Image" }
+        }
         style={styles.headerImage}
       >
         <View style={styles.headerTop}>
@@ -94,6 +74,9 @@ const TravelPackageDetails = () => {
         </View>
       </View>
 
+      {/* ABOUT THIS PACKAGE */}
+      <Text style={styles.aboutTitle}>About this Package</Text>
+
       {/* DESCRIPTION */}
       <TouchableOpacity onPress={toggleExpanded}>
         <Text style={styles.paragraph}>
@@ -108,75 +91,53 @@ const TravelPackageDetails = () => {
         </Text>
       </TouchableOpacity>
 
-      {/* TABS */}
-      <View style={styles.tabRow}>
-        <TouchableOpacity
-          style={[
-            styles.tabButton,
-            activeTab === "Itinerary" && styles.activeTabButton,
-          ]}
-          onPress={() => setActiveTab("Itinerary")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "Itinerary" && styles.activeTabText,
-            ]}
-          >
-            Itinerary
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.tabButton,
-            activeTab === "Details" && styles.activeTabButton,
-          ]}
-          onPress={() => setActiveTab("Details")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "Details" && styles.activeTabText,
-            ]}
-          >
-            Details
-          </Text>
-        </TouchableOpacity>
+      {/* INCLUDED & NOT INCLUDED */}
+      <View style={styles.details}>
+        <Text style={styles.detailsTitle}>
+          <Ionicons name="checkmark-circle" size={20} color="green" /> Included:
+        </Text>
+        {packageData.included.map((inc, i) => (
+          <View key={i} style={styles.detailRow}>
+            <Ionicons name="checkmark-circle" size={20} color="green" />
+            <Text style={styles.detailText}>{inc}</Text>
+          </View>
+        ))}
+
+        <Text style={styles.detailsTitle}>
+          <Ionicons name="close-circle" size={20} color="red" /> Not Included:
+        </Text>
+        {packageData.notIncluded.map((ninc, i) => (
+          <View key={i} style={styles.detailRow}>
+            <Ionicons name="close-circle" size={20} color="red" />
+            <Text style={styles.detailText}>{ninc}</Text>
+          </View>
+        ))}
       </View>
 
-      {/* TAB CONTENT */}
-      {activeTab === "Itinerary" ? (
-        <View style={styles.itinerary}>
-          {itinerary.map((day, index) => (
-            <View key={day.id} style={styles.itineraryItem}>
-              <View style={styles.timeline}>
-                <View style={styles.circle} />
-                {index < itinerary.length - 1 && <View style={styles.line} />}
+      {packageData.availableDepartures &&
+        packageData.availableDepartures.length > 0 && (
+          <View style={styles.departureContainer}>
+            <Text style={styles.departureTitle}>Available Departures</Text>
+            {packageData.availableDepartures.map((departure, index) => (
+              <View key={index} style={styles.departureCard}>
+                <View>
+                  <Text style={styles.departureDate}>{departure.date}</Text>
+                  <Text style={styles.departureSpots}>
+                    {departure.spotsAvailable}
+                  </Text>
+                </View>
+                <View style={styles.departurePriceContainer}>
+                  <Text style={styles.departurePrice}>
+                    Rs.{departure.price.toLocaleString()}
+                  </Text>
+                  <View style={styles.availableBadge}>
+                    <Text style={styles.availableText}>Available</Text>
+                  </View>
+                </View>
               </View>
-              <View style={styles.itineraryContent}>
-                <Text style={styles.itineraryTitle}>{day.title}</Text>
-                <Text style={styles.itineraryDesc}>{day.desc}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      ) : (
-        <View style={styles.details}>
-          <Text style={styles.detailsTitle}>Included:</Text>
-          {packageData.included.map((inc, i) => (
-            <Text key={i} style={styles.detailText}>
-              • {inc}
-            </Text>
-          ))}
-
-          <Text style={styles.detailsTitle}>Not Included:</Text>
-          {packageData.notIncluded.map((ninc, i) => (
-            <Text key={i} style={styles.detailText}>
-              • {ninc}
-            </Text>
-          ))}
-        </View>
-      )}
+            ))}
+          </View>
+        )}
     </ScrollView>
   );
 };
@@ -209,15 +170,6 @@ const styles = StyleSheet.create({
     fontFamily: fontNames.nunito.semiBold,
     marginLeft: 4,
   },
-  paragraph: {
-    paddingHorizontal: 24,
-    marginVertical: 24,
-    fontSize: 14,
-    fontFamily: fontNames.raleway.regular,
-    lineHeight: 24,
-    color: "#666",
-    marginBottom: 16,
-  },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -226,72 +178,108 @@ const styles = StyleSheet.create({
   },
   infoItem: { flexDirection: "row", alignItems: "center" },
   infoText: { marginLeft: 5, fontSize: 14 },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  price: {
-    color: "green",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  person: {
-    fontSize: 12,
-    color: "#444",
-  },
+  priceRow: { flexDirection: "row", alignItems: "center" },
+  price: { color: "green", fontSize: 14, fontWeight: "bold" },
+  person: { fontSize: 12, color: "#444" },
 
-  description: {
-    fontSize: 14,
-    color: "#555",
-    paddingHorizontal: 15,
+  aboutTitle: {
+    fontSize: 24,
+    fontFamily: fontNames.raleway.medium,
+    paddingHorizontal: 40,
+    marginTop: 20,
     marginBottom: 10,
+    textAlign: "left",
   },
-
-  tabRow: {
-    flexDirection: "row",
-    justifyContent: "space-evenly",
-    borderRadius: 10,
-    paddingVertical: 2,
-    backgroundColor: "#C62828",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e21e1eff",
-    marginHorizontal: 22,
+  paragraph: {
+    textAlign: "justify",
+    paddingHorizontal: 40,
+    marginVertical: 10,
+    fontSize: 16,
+    fontFamily: fontNames.raleway.regular,
+    lineHeight: 24,
+    color: "#666",
     marginBottom: 16,
   },
-  tabButton: {
-    width: "32%",
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
+
+  details: {
+    paddingHorizontal: 40,
+    marginVertical: 10,
+    alignItems: "flex-start",
   },
-  activeTabButton: {
-    backgroundColor: "#fff",
-  },
-  tabText: {
-    fontSize: 16,
+  detailsTitle: {
+    fontFamily: fontNames.raleway.medium,
+    fontSize: 24,
+    marginVertical: 10,
     textAlign: "center",
-    color: "#fff",
   },
-  activeTabText: {
-    color: "#000",
-    fontWeight: "semi-bold",
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 5,
+  },
+  detailText: {
+    fontSize: 16,
+    fontFamily: fontNames.raleway.regular,
+    color: "#555",
+    marginLeft: 10,
+    textAlign: "center",
   },
 
-  itinerary: { paddingHorizontal: 15, marginTop: 10 },
-  itineraryItem: { flexDirection: "row", marginBottom: 20 },
-  timeline: { alignItems: "center", width: 20 },
-  circle: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#C62828",
+  departureContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    padding: 16,
+    marginHorizontal: 40,
+    marginTop: 20,
+    marginBottom: 30,
   },
-  line: { width: 2, flex: 1, backgroundColor: "#C62828", marginTop: 2 },
-  itineraryContent: { marginLeft: 10, flex: 1 },
-  itineraryTitle: { fontWeight: "bold", fontSize: 15, marginBottom: 2 },
-  itineraryDesc: { fontSize: 13, color: "#555" },
-
-  details: { paddingHorizontal: 15, marginTop: 10 },
-  detailsTitle: { fontWeight: "bold", marginTop: 10, marginBottom: 5 },
-  detailText: { fontSize: 13, color: "#555", marginLeft: 10 },
+  departureTitle: {
+    fontSize: 22,
+    fontWeight: "600",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  departureCard: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    borderRadius: 10,
+    marginBottom: 12,
+    backgroundColor: "#fafafa",
+  },
+  departureDate: {
+    fontWeight: "600",
+    fontSize: 16,
+    color: "#111827",
+  },
+  departureSpots: {
+    fontSize: 14,
+    color: "#6b7280",
+    marginTop: 2,
+  },
+  departurePriceContainer: {
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
+  departurePrice: {
+    fontWeight: "700",
+    fontSize: 16,
+    color: "#111827",
+  },
+  availableBadge: {
+    backgroundColor: "#fee2e2",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  availableText: {
+    color: "#b91c1c",
+    fontSize: 12,
+    fontWeight: "500",
+  },
 });

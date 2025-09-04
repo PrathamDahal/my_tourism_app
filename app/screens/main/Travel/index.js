@@ -10,11 +10,12 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
 import Icon from "react-native-vector-icons/FontAwesome";
+import { useNavigation } from "@react-navigation/native";
 import { fontNames } from "../../../config/font";
 import RatingStars from "../../../custom/RatingStars";
 import { useGetTravelPackagesQuery } from "../../../services/travelPackagesApi";
+import { API_BASE_URL } from "../../../../config";
 
 const TravelPackagesScreen = () => {
   const [search, setSearch] = useState("");
@@ -27,36 +28,14 @@ const TravelPackagesScreen = () => {
     error,
   } = useGetTravelPackagesQuery();
 
-  const renderPackage = ({ item }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() =>
-        navigation.navigate("TravelPackageDetails", { packageData: item })
-      }
-    >
-      <Image source={{ uri: item.imageUrls[0]?.url }} style={styles.image} />
-      <View style={styles.durationBadge}>
-        <Ionicons name="time-outline" size={14} color="#000" />
-        <Text style={styles.durationText}>{item.duration}</Text>
-      </View>
-      <View style={styles.cardContent}>
-        <Text style={styles.cardTitle}>{item.title}</Text>
-        <Text style={styles.location}>{item.location}</Text>
-        <View style={styles.priceRow}>
-          <Text style={styles.price}>Npr {item.price} </Text>
-          <Text style={styles.person}>/person</Text>
-        </View>
-        <View style={styles.rating}>
-          <RatingStars rating={item.rating} />
-          <Text style={styles.ratingText}>{item.rating}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-
   if (isLoading) {
     return (
-      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
         <ActivityIndicator size="large" color="#C62828" />
       </View>
     );
@@ -64,11 +43,78 @@ const TravelPackagesScreen = () => {
 
   if (isError) {
     return (
-      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
         <Text>{error?.message || "Failed to load travel packages"}</Text>
       </View>
     );
   }
+
+  const Packages = travelPackages?.data || [];
+
+  const filteredPackages = Packages.filter((item) =>
+    item.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const renderPackage = ({ item }) => {
+    // Safely get the first image string
+    const firstImage = item?.images?.[0];
+
+    // Construct full URL if it exists
+    const imageUrl = firstImage ? `${API_BASE_URL}/${firstImage}` : null;
+
+    return (
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() =>
+          navigation.navigate("TravelPackageDetails", { packageData: item })
+        }
+      >
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={styles.image} />
+        ) : (
+          <View
+            style={[
+              styles.image,
+              {
+                backgroundColor: "#ccc",
+                justifyContent: "center",
+                alignItems: "center",
+              },
+            ]}
+          >
+            <Text>No Image</Text>
+          </View>
+        )}
+
+        <View style={styles.durationBadge}>
+          <Ionicons name="time-outline" size={14} color="#000" />
+          <Text style={styles.durationText}>
+            {item?.durationDays ?? 0} Days / {item?.durationNights ?? 0} Nights
+          </Text>
+        </View>
+
+        <View style={styles.cardContent}>
+          <Text style={styles.cardTitle}>{item?.name ?? "No Title"}</Text>
+          <Text style={styles.location}>
+            {item?.destinationsRelation?.[0]?.name ?? null }
+          </Text>
+          <View style={styles.priceRow}>
+            <Text style={styles.price}>Npr {item?.price ?? 0}</Text>
+            <Text style={styles.person}>/person</Text>
+          </View>
+          <View style={styles.rating}>
+            <RatingStars rating={item?.rating ?? 0} />
+            <Text style={styles.ratingText}>{item?.rating ?? 0}</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -108,12 +154,15 @@ const TravelPackagesScreen = () => {
 
       {/* Package List */}
       <FlatList
-        data={travelPackages?.filter((item) =>
-          item.title.toLowerCase().includes(search.toLowerCase())
-        )}
-        keyExtractor={(item) => item.id}
+        data={filteredPackages}
+        keyExtractor={(item) => item.id.toString()}
         renderItem={renderPackage}
         contentContainerStyle={{ paddingBottom: 20 }}
+        ListEmptyComponent={
+          <View style={{ alignItems: "center", marginTop: 50 }}>
+            <Text>No packages found.</Text>
+          </View>
+        }
       />
     </View>
   );
@@ -122,10 +171,7 @@ const TravelPackagesScreen = () => {
 export default TravelPackagesScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
   header: {
     backgroundColor: "#C62828",
     paddingHorizontal: 15,
@@ -135,14 +181,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  leftGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  backButton: {
-    marginRight: 10,
-    padding: 4,
-  },
+  leftGroup: { flexDirection: "row", alignItems: "center" },
+  backButton: { marginRight: 10, padding: 4 },
   headerTitle: {
     fontSize: 24,
     color: "#fff",
@@ -153,11 +193,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.2)",
   },
-  searchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    margin: 12,
-  },
+  searchRow: { flexDirection: "row", alignItems: "center", margin: 12 },
   searchInput: {
     flex: 1,
     backgroundColor: "#fff",
@@ -186,10 +222,7 @@ const styles = StyleSheet.create({
     elevation: 3,
     overflow: "hidden",
   },
-  image: {
-    width: "100%",
-    height: 180,
-  },
+  image: { width: "100%", height: 180 },
   durationBadge: {
     position: "absolute",
     top: 10,
@@ -201,36 +234,17 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 20,
   },
-  durationText: {
-    fontSize: 12,
-    marginLeft: 4,
-  },
-  cardContent: {
-    padding: 10,
-  },
+  durationText: { fontSize: 12, marginLeft: 4 },
+  cardContent: { padding: 10 },
   cardTitle: {
     fontFamily: fontNames.openSans.semibold,
     fontSize: 16,
     marginBottom: 2,
   },
-  location: {
-    fontSize: 13,
-    color: "#666",
-    marginBottom: 6,
-  },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  price: {
-    color: "green",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  person: {
-    fontSize: 12,
-    color: "#444",
-  },
+  location: { fontSize: 13, color: "#666", marginBottom: 6 },
+  priceRow: { flexDirection: "row", alignItems: "center" },
+  price: { color: "green", fontSize: 14, fontWeight: "bold" },
+  person: { fontSize: 12, color: "#444" },
   rating: {
     position: "absolute",
     bottom: 10,
@@ -243,9 +257,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     elevation: 1,
   },
-  ratingText: {
-    marginLeft: 4,
-    fontSize: 13,
-    fontWeight: "bold",
-  },
+  ratingText: { marginLeft: 4, fontSize: 13, fontWeight: "bold" },
 });

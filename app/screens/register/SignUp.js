@@ -12,19 +12,21 @@ import {
 } from "react-native";
 import { useFormik } from "formik";
 import * as Yup from "yup";
-import { useNavigation } from "@react-navigation/native";
 import { Modal, FlatList } from "react-native";
 import { AntDesign } from "@expo/vector-icons";
 import { useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import { useCreateUserMutation } from "../../services/registerApi";
 import { fontNames } from "../../config/font";
+import { useNavigation } from "@react-navigation/native";
 
 const RegisterScreen = () => {
   const navigation = useNavigation();
   const [createUser, { isLoading }] = useCreateUserMutation();
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showGenderModal, setShowGenderModal] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const roleOptions = [
     { label: "Normal", value: "NORMAL" },
@@ -71,7 +73,8 @@ const RegisterScreen = () => {
       try {
         const res = await createUser(values).unwrap();
         if (res.success) {
-          navigation.navigate("Login");
+          // Show success modal instead of navigating immediately
+          setShowSuccessModal(true);
         }
       } catch (err) {
         alert(err?.data?.message || "Registration failed.");
@@ -83,13 +86,13 @@ const RegisterScreen = () => {
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.Images, 
+      mediaTypes: ImagePicker.Images,
       allowsEditing: true,
       quality: 1,
-      base64: true, 
+      base64: true,
     });
 
-    if (!result.cancelled && result.base64) {
+    if (!result.canceled && result.base64) {
       formik.setFieldValue("images", `/uploads/${result.base64}`);
     }
   };
@@ -97,18 +100,32 @@ const RegisterScreen = () => {
   const renderField = (label, name, options = {}) => (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput
-        style={[
-          styles.input,
-          formik.touched[name] && formik.errors[name] && styles.errorInput,
-        ]}
-        value={formik.values[name]}
-        onChangeText={formik.handleChange(name)}
-        onBlur={formik.handleBlur(name)}
-        placeholder={label}
-        secureTextEntry={options.secure}
-        keyboardType={options.keyboard}
-      />
+      <View style={styles.passwordContainer}>
+        <TextInput
+          style={[
+            styles.input,
+            formik.touched[name] && formik.errors[name] && styles.errorInput,
+          ]}
+          value={formik.values[name]}
+          onChangeText={formik.handleChange(name)}
+          onBlur={formik.handleBlur(name)}
+          placeholder={label}
+          secureTextEntry={options.secure && !showPassword}
+          keyboardType={options.keyboard}
+        />
+        {options.secure && (
+          <TouchableOpacity
+            onPress={() => setShowPassword(!showPassword)}
+            style={styles.eyeIcon}
+          >
+            <AntDesign
+              name={showPassword ? "eyeo" : "eye"}
+              size={20}
+              color="#888"
+            />
+          </TouchableOpacity>
+        )}
+      </View>
       {formik.touched[name] && formik.errors[name] && (
         <Text style={styles.errorText}>{formik.errors[name]}</Text>
       )}
@@ -171,19 +188,17 @@ const RegisterScreen = () => {
     >
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.leftSection}>
-          {" "}
           <Image
             source={require("../../../assets/T-App-icon.png")}
             style={styles.image}
             resizeMode="cover"
-          />{" "}
-          <Text style={styles.appTitle}>Panchpokhari Tourism</Text>{" "}
-          <Text style={styles.subtitle}>PanchPokhari Thangpal Gaupailka</Text>{" "}
+          />
+          <Text style={styles.appTitle}>Panchpokhari Tourism</Text>
+          <Text style={styles.subtitle}>PanchPokhari Thangpal Gaupailka</Text>
           <Text style={styles.description}>
-            {" "}
             Discover authentic destinations and unforgettable experiences
-            tailored for every traveler.{" "}
-          </Text>{" "}
+            tailored for every traveler.
+          </Text>
         </View>
         <Text style={styles.title}>Create Account</Text>
 
@@ -244,6 +259,24 @@ const RegisterScreen = () => {
             <Text style={styles.buttonText}>Register</Text>
           )}
         </TouchableOpacity>
+        <Modal visible={showSuccessModal} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.successModalContent}>
+              <Text style={styles.successText}>
+                User has been registered successfully!!!
+              </Text>
+              <TouchableOpacity
+                style={styles.successButton}
+                onPress={() => {
+                  setShowSuccessModal(false);
+                  navigation.navigate("Login");
+                }}
+              >
+                <Text style={styles.successButtonText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -354,6 +387,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 16,
   },
+  eyeIcon: {
+    position: "absolute",
+    alignItems: "center",
+    top: 12,
+    right: 12,
+  },
   dropdownButton: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -382,5 +421,28 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
+  },
+  successModalContent: {
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    width: "80%",
+  },
+  successText: {
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  successButton: {
+    backgroundColor: "#e3342f",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  successButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
   },
 });
