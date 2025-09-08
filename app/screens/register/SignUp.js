@@ -1,46 +1,30 @@
+import { useState } from "react";
 import {
   View,
   Text,
   TextInput,
-  ScrollView,
-  StyleSheet,
   TouchableOpacity,
+  StyleSheet,
   ActivityIndicator,
-  KeyboardAvoidingView,
+  Modal,
+  ScrollView,
   Platform,
-  Image,
+  KeyboardAvoidingView,
 } from "react-native";
+import { Picker } from "@react-native-picker/picker";
+import { useNavigation } from "@react-navigation/native";
 import { useFormik } from "formik";
 import * as Yup from "yup";
-import { Modal, FlatList } from "react-native";
-import { AntDesign } from "@expo/vector-icons";
-import { useState } from "react";
-import * as ImagePicker from "expo-image-picker";
-import { useCreateUserMutation } from "../../services/registerApi";
+import { useRegisterUserMutation } from "../../services/registerApi";
+import Icon from "react-native-vector-icons/FontAwesome";
 import { fontNames } from "../../config/font";
-import { useNavigation } from "@react-navigation/native";
 
 const RegisterScreen = () => {
   const navigation = useNavigation();
-  const [createUser, { isLoading }] = useCreateUserMutation();
-  const [showRoleModal, setShowRoleModal] = useState(false);
-  const [showGenderModal, setShowGenderModal] = useState(false);
+  const [registerUser, { isLoading }] = useRegisterUserMutation();
+  const [showModal, setShowModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-
-  const roleOptions = [
-    { label: "Normal", value: "NORMAL" },
-    { label: "Admin", value: "ADMIN" },
-    { label: "Seller", value: "SELLER" },
-    { label: "Host", value: "HOST" },
-    { label: "Travel Agency", value: "TRAVELAGENCY" },
-  ];
-
-  const genderOptions = [
-    { label: "Male", value: "MALE" },
-    { label: "Female", value: "FEMALE" },
-    { label: "Other", value: "OTHERS" },
-  ];
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const validationSchema = Yup.object().shape({
     firstName: Yup.string().required("First name is required"),
@@ -48,9 +32,14 @@ const RegisterScreen = () => {
     email: Yup.string().email("Invalid email").required("Email is required"),
     phone: Yup.string().required("Phone is required"),
     username: Yup.string().required("Username is required"),
-    password: Yup.string().min(8).required("Password is required"),
-    role: Yup.string().required("Role is required"),
+    password: Yup.string()
+      .min(8, "Password must be at least 8 characters")
+      .required("Password is required"),
+    confirmPassword: Yup.string()
+      .oneOf([Yup.ref("password"), null], "Passwords must match")
+      .required("Confirm Password is required"),
     gender: Yup.string().required("Gender is required"),
+    role: Yup.string().required("Role is required"),
   });
 
   const formik = useFormik({
@@ -60,220 +49,316 @@ const RegisterScreen = () => {
       lastName: "",
       email: "",
       phone: "",
-      username: "",
-      password: "",
-      role: "",
-      gender: "",
       permanentAddress: "",
       temporaryAddress: "",
-      images: null,
+      username: "",
+      password: "",
+      confirmPassword: "",
+      gender: "",
+      role: "",
     },
     validationSchema,
-    onSubmit: async (values, { setSubmitting }) => {
+    onSubmit: async (values, { setSubmitting, setStatus }) => {
       try {
-        const res = await createUser(values).unwrap();
-        if (res.success) {
-          // Show success modal instead of navigating immediately
-          setShowSuccessModal(true);
+        const { confirmPassword, ...apiPayload } = values;
+        const response = await registerUser(apiPayload).unwrap();
+
+        if (response.success) {
+          setShowModal(true);
+          setTimeout(() => {
+            setShowModal(false);
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "MainStack" }],
+            });
+          }, 2000);
         }
       } catch (err) {
-        alert(err?.data?.message || "Registration failed.");
+        setStatus(
+          err.data?.message || "Registration failed. Please try again."
+        );
       } finally {
         setSubmitting(false);
       }
     },
   });
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.Images,
-      allowsEditing: true,
-      quality: 1,
-      base64: true,
-    });
-
-    if (!result.canceled && result.base64) {
-      formik.setFieldValue("images", `/uploads/${result.base64}`);
-    }
-  };
-
-  const renderField = (label, name, options = {}) => (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.passwordContainer}>
-        <TextInput
-          style={[
-            styles.input,
-            formik.touched[name] && formik.errors[name] && styles.errorInput,
-          ]}
-          value={formik.values[name]}
-          onChangeText={formik.handleChange(name)}
-          onBlur={formik.handleBlur(name)}
-          placeholder={label}
-          secureTextEntry={options.secure && !showPassword}
-          keyboardType={options.keyboard}
-        />
-        {options.secure && (
-          <TouchableOpacity
-            onPress={() => setShowPassword(!showPassword)}
-            style={styles.eyeIcon}
-          >
-            <AntDesign
-              name={showPassword ? "eyeo" : "eye"}
-              size={20}
-              color="#888"
-            />
-          </TouchableOpacity>
-        )}
-      </View>
-      {formik.touched[name] && formik.errors[name] && (
-        <Text style={styles.errorText}>{formik.errors[name]}</Text>
-      )}
-    </View>
-  );
-
-  const renderDropdown = (label, name, options, showModal, setShowModal) => (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}*</Text>
-      <TouchableOpacity
-        style={[
-          styles.dropdownButton,
-          formik.touched[name] && formik.errors[name] && styles.errorInput,
-        ]}
-        onPress={() => setShowModal(true)}
-      >
-        <Text style={{ color: formik.values[name] ? "#000" : "#aaa" }}>
-          {formik.values[name]
-            ? options.find((r) => r.value === formik.values[name])?.label
-            : `Select your ${label.toLowerCase()}`}
-        </Text>
-        <AntDesign name="down" size={16} color="#888" />
-      </TouchableOpacity>
-
-      {formik.touched[name] && formik.errors[name] && (
-        <Text style={styles.errorText}>{formik.errors[name]}</Text>
-      )}
-
-      <Modal visible={showModal} transparent animationType="fade">
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          onPress={() => setShowModal(false)}
-        >
-          <View style={styles.modalContent}>
-            <FlatList
-              data={options}
-              keyExtractor={(item) => item.value}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.modalItem}
-                  onPress={() => {
-                    formik.setFieldValue(name, item.value);
-                    setShowModal(false);
-                  }}
-                >
-                  <Text>{item.label}</Text>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </TouchableOpacity>
-      </Modal>
-    </View>
-  );
-
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 20}
     >
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.leftSection}>
-          <Image
-            source={require("../../../assets/T-App-icon.png")}
-            style={styles.image}
-            resizeMode="cover"
-          />
-          <Text style={styles.appTitle}>Panchpokhari Tourism</Text>
-          <Text style={styles.subtitle}>PanchPokhari Thangpal Gaupailka</Text>
-          <Text style={styles.description}>
-            Discover authentic destinations and unforgettable experiences
-            tailored for every traveler.
-          </Text>
-        </View>
-        <Text style={styles.title}>Create Account</Text>
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View>
+          <View style={styles.headerBox}>
+            <Text style={styles.headerText}>User Registration</Text>
+          </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Personal Info</Text>
-          {renderField("First Name*", "firstName")}
-          {renderField("Middle Name", "middleName")}
-          {renderField("Last Name*", "lastName")}
-          {renderField("Email*", "email", { keyboard: "email-address" })}
-          {renderField("Phone*", "phone", { keyboard: "phone-pad" })}
-          {renderField("Permanent Address", "permanentAddress")}
-          {renderField("Temporary Address", "temporaryAddress")}
-          <Text style={styles.label}>Image</Text>
-          <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
-            <Text style={{ fontSize: 16 }}>
-              {formik.values.images
-                ? "Change Profile Image"
-                : "Select Profile Image"}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.formBox}>
+            {formik.status && (
+              <Text style={styles.errorMessage}>{formik.status}</Text>
+            )}
+
+            <Text style={styles.sectionTitle}>Personal Information</Text>
+
+            {/* First & Middle Name */}
+            <View style={styles.gridRow}>
+              <View style={styles.gridItem}>
+                <Text style={styles.inputTitle}>First Name*</Text>
+                <TextInput
+                  placeholder="Enter first name"
+                  style={[
+                    styles.input,
+                    formik.touched.firstName &&
+                      formik.errors.firstName &&
+                      styles.errorInput,
+                  ]}
+                  onChangeText={formik.handleChange("firstName")}
+                  onBlur={formik.handleBlur("firstName")}
+                  value={formik.values.firstName}
+                />
+                {formik.touched.firstName && formik.errors.firstName && (
+                  <Text style={styles.errorText}>
+                    {formik.errors.firstName}
+                  </Text>
+                )}
+              </View>
+
+              <View style={styles.gridItem}>
+                <Text style={styles.inputTitle}>Middle Name</Text>
+                <TextInput
+                  placeholder="Enter middle name"
+                  style={styles.input}
+                  onChangeText={formik.handleChange("middleName")}
+                  onBlur={formik.handleBlur("middleName")}
+                  value={formik.values.middleName}
+                />
+              </View>
+            </View>
+
+            <Text style={styles.inputTitle}>Last Name*</Text>
+            <TextInput
+              placeholder="Enter last name"
+              style={[
+                styles.input,
+                formik.touched.lastName &&
+                  formik.errors.lastName &&
+                  styles.errorInput,
+              ]}
+              onChangeText={formik.handleChange("lastName")}
+              onBlur={formik.handleBlur("lastName")}
+              value={formik.values.lastName}
+            />
+            {formik.touched.lastName && formik.errors.lastName && (
+              <Text style={styles.errorText}>{formik.errors.lastName}</Text>
+            )}
+
+            <Text style={styles.inputTitle}>Gender*</Text>
+            <View style={[styles.input, styles.pickerBox]}>
+              <Picker
+                selectedValue={formik.values.gender}
+                onValueChange={(itemValue) =>
+                  formik.setFieldValue("gender", itemValue)
+                }
+              >
+                <Picker.Item label="Select Gender*" value="" />
+                <Picker.Item label="MALE" value="MALE" />
+                <Picker.Item label="FEMALE" value="FEMALE" />
+                <Picker.Item label="OTHERS" value="OTHERS" />
+              </Picker>
+            </View>
+            {formik.touched.gender && formik.errors.gender && (
+              <Text style={styles.errorText}>{formik.errors.gender}</Text>
+            )}
+
+            <Text style={styles.inputTitle}>Email*</Text>
+            <TextInput
+              placeholder="Enter email"
+              style={[
+                styles.input,
+                formik.touched.email &&
+                  formik.errors.email &&
+                  styles.errorInput,
+              ]}
+              onChangeText={formik.handleChange("email")}
+              onBlur={formik.handleBlur("email")}
+              value={formik.values.email}
+              keyboardType="email-address"
+            />
+            {formik.touched.email && formik.errors.email && (
+              <Text style={styles.errorText}>{formik.errors.email}</Text>
+            )}
+
+            <Text style={styles.inputTitle}>Phone*</Text>
+            <TextInput
+              placeholder="Enter phone number"
+              style={[
+                styles.input,
+                formik.touched.phone &&
+                  formik.errors.phone &&
+                  styles.errorInput,
+              ]}
+              onChangeText={formik.handleChange("phone")}
+              onBlur={formik.handleBlur("phone")}
+              value={formik.values.phone}
+              keyboardType="phone-pad"
+            />
+            {formik.touched.phone && formik.errors.phone && (
+              <Text style={styles.errorText}>{formik.errors.phone}</Text>
+            )}
+
+            {/* New Optional Address Fields */}
+            <Text style={styles.inputTitle}>Permanent Address</Text>
+            <TextInput
+              placeholder="Enter permanent address"
+              style={styles.input}
+              onChangeText={formik.handleChange("permanentAddress")}
+              onBlur={formik.handleBlur("permanentAddress")}
+              value={formik.values.permanentAddress}
+            />
+
+            <Text style={styles.inputTitle}>Temporary Address</Text>
+            <TextInput
+              placeholder="Enter temporary address"
+              style={styles.input}
+              onChangeText={formik.handleChange("temporaryAddress")}
+              onBlur={formik.handleBlur("temporaryAddress")}
+              value={formik.values.temporaryAddress}
+            />
+
+            {/* Account Info */}
+            <Text style={styles.sectionTitle}>Account Information</Text>
+
+            <Text style={styles.inputTitle}>Username*</Text>
+            <TextInput
+              placeholder="Enter username"
+              style={[
+                styles.input,
+                formik.touched.username &&
+                  formik.errors.username &&
+                  styles.errorInput,
+              ]}
+              onChangeText={formik.handleChange("username")}
+              onBlur={formik.handleBlur("username")}
+              value={formik.values.username}
+            />
+            {formik.touched.username && formik.errors.username && (
+              <Text style={styles.errorText}>{formik.errors.username}</Text>
+            )}
+
+            <Text style={styles.inputTitle}>Password*</Text>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                placeholder="Enter password"
+                secureTextEntry={!showPassword}
+                style={[
+                  styles.input,
+                  formik.touched.password &&
+                    formik.errors.password &&
+                    styles.errorInput,
+                  { paddingRight: 40 },
+                ]}
+                onChangeText={formik.handleChange("password")}
+                onBlur={formik.handleBlur("password")}
+                value={formik.values.password}
+              />
+              <TouchableOpacity
+                style={styles.iconRight}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Icon
+                  name={showPassword ? "eye" : "eye-slash"}
+                  size={20}
+                  color="#6b7280"
+                />
+              </TouchableOpacity>
+            </View>
+            {formik.touched.password && formik.errors.password && (
+              <Text style={styles.errorText}>{formik.errors.password}</Text>
+            )}
+
+            <Text style={styles.inputTitle}>Confirm Password*</Text>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                placeholder="Confirm password"
+                secureTextEntry={!showConfirmPassword}
+                style={[
+                  styles.input,
+                  formik.touched.confirmPassword &&
+                    formik.errors.confirmPassword &&
+                    styles.errorInput,
+                  { paddingRight: 40 },
+                ]}
+                onChangeText={formik.handleChange("confirmPassword")}
+                onBlur={formik.handleBlur("confirmPassword")}
+                value={formik.values.confirmPassword}
+              />
+              <TouchableOpacity
+                style={styles.iconRight}
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                <Icon
+                  name={showConfirmPassword ? "eye" : "eye-slash"}
+                  size={20}
+                  color="#6b7280"
+                />
+              </TouchableOpacity>
+            </View>
+            {formik.touched.confirmPassword &&
+              formik.errors.confirmPassword && (
+                <Text style={styles.errorText}>
+                  {formik.errors.confirmPassword}
+                </Text>
+              )}
+
+            {/* Role */}
+            <Text style={styles.inputTitle}>Role Selection*</Text>
+            <View style={[styles.input, styles.pickerBox]}>
+              <Picker
+                selectedValue={formik.values.role}
+                onValueChange={(itemValue) =>
+                  formik.setFieldValue("role", itemValue)
+                }
+              >
+                <Picker.Item label="Select Role*" value="" />
+                <Picker.Item label="Normal" value="normal" />
+                <Picker.Item label="Seller" value="seller" />
+                <Picker.Item label="Host" value="host" />
+                <Picker.Item label="Travel Agency" value="travelAgency" />
+                <Picker.Item label="Admin" value="admin" />
+              </Picker>
+            </View>
+            {formik.touched.role && formik.errors.role && (
+              <Text style={styles.errorText}>{formik.errors.role}</Text>
+            )}
+
+            <TouchableOpacity
+              style={[
+                styles.button,
+                (isLoading || formik.isSubmitting) && styles.buttonDisabled,
+              ]}
+              onPress={formik.handleSubmit}
+              disabled={isLoading || formik.isSubmitting}
+            >
+              {isLoading || formik.isSubmitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Register</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account Info</Text>
-          {renderField("Username*", "username")}
-          {renderField("Password*", "password", { secure: true })}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Role & Gender</Text>
-          {renderDropdown(
-            "Role",
-            "role",
-            roleOptions,
-            showRoleModal,
-            setShowRoleModal
-          )}
-          {renderDropdown(
-            "Gender",
-            "gender",
-            genderOptions,
-            showGenderModal,
-            setShowGenderModal
-          )}
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.button,
-            (formik.isSubmitting || isLoading) && styles.disabledButton,
-          ]}
-          onPress={formik.handleSubmit}
-          disabled={formik.isSubmitting || isLoading}
-        >
-          {formik.isSubmitting || isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Register</Text>
-          )}
-        </TouchableOpacity>
-        <Modal visible={showSuccessModal} transparent animationType="fade">
+        <Modal visible={showModal} transparent animationType="fade">
           <View style={styles.modalOverlay}>
-            <View style={styles.successModalContent}>
-              <Text style={styles.successText}>
+            <View style={styles.modalBox}>
+              <Text style={styles.modalText}>
                 User has been registered successfully!!!
               </Text>
-              <TouchableOpacity
-                style={styles.successButton}
-                onPress={() => {
-                  setShowSuccessModal(false);
-                  navigation.navigate("Login");
-                }}
-              >
-                <Text style={styles.successButtonText}>OK</Text>
-              </TouchableOpacity>
             </View>
           </View>
         </Modal>
@@ -285,164 +370,109 @@ const RegisterScreen = () => {
 export default RegisterScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: "#f8f9fa",
-    paddingBottom: 60,
+  headerBox: {
+    backgroundColor: "#dc2626",
+    paddingTop: 32,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
   },
-  leftSection: {
-    alignItems: "center",
-    marginBottom: 20,
-    paddingHorizontal: 10,
-  },
-  image: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    marginBottom: 10,
-  },
-  appTitle: {
-    fontSize: 20,
+  headerText: {
+    color: "#fff",
+    fontSize: 24,
     fontWeight: "bold",
-    color: "#e3342f",
-    textAlign: "center",
   },
-  subtitle: {
-    fontSize: 14,
-    color: "#555",
-    textAlign: "center",
-    marginTop: 4,
-  },
-  description: {
-    fontSize: 13,
-    color: "#666",
-    textAlign: "center",
-    marginTop: 6,
-    paddingHorizontal: 10,
-  },
-  imagePicker: {
-    borderColor: "#ccc",
-    borderWidth: 1,
+  formBox: {
     paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 26,
-    fontFamily: fontNames.raleway.regular,
-    color: "#e3342f",
-    textAlign: "center",
-    marginVertical: 20,
-  },
-  section: {
-    marginBottom: 25,
-    backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 10,
-    elevation: 2,
+    paddingHorizontal: 16,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontFamily: fontNames.poppins.regular,
-    marginBottom: 12,
-    color: "#333",
+    fontSize: 24,
+    fontFamily: fontNames.openSans.semibold,
+    color: "#374151",
+    marginVertical: 12,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
   },
-  field: {
-    marginBottom: 12,
-  },
-  label: {
-    fontSize: 13,
-    fontFamily: fontNames.poppins.regular,
-    color: "#555",
+  inputTitle: {
+    fontSize: 14,
+    fontFamily: fontNames.nunito.semiBold,
     marginBottom: 4,
+    color: "#111827",
+  },
+  gridRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  gridItem: {
+    flex: 1,
+    marginRight: 6,
+  },
+
+  inputWrapper: {
+    position: "relative",
+  },
+  iconRight: {
+    position: "absolute",
+    right: 10,
+    top: 20,
+    transform: [{ translateY: -10 }],
+    zIndex: 10,
   },
   input: {
-    height: 45,
-    borderColor: "#ccc",
     borderWidth: 1,
+    borderColor: "#d1d5db",
     borderRadius: 8,
-    paddingHorizontal: 12,
+    padding: 10,
+    marginBottom: 8,
     backgroundColor: "#fff",
   },
+  pickerBox: {
+    padding: 0,
+  },
   errorInput: {
-    borderColor: "#e3342f",
+    borderColor: "red",
   },
   errorText: {
+    color: "red",
     fontSize: 12,
-    color: "#e3342f",
-    marginTop: 3,
+    marginBottom: 6,
+  },
+  errorMessage: {
+    color: "red",
+    marginBottom: 12,
+    textAlign: "center",
   },
   button: {
-    backgroundColor: "#e3342f",
+    backgroundColor: "#dc2626",
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: "center",
     marginTop: 10,
   },
-  disabledButton: {
+  buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
     color: "#fff",
-    fontWeight: "700",
+    fontWeight: "bold",
     fontSize: 16,
-  },
-  eyeIcon: {
-    position: "absolute",
-    alignItems: "center",
-    top: 12,
-    right: 12,
-  },
-  dropdownButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    height: 45,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    backgroundColor: "#fff",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.3)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
   },
-  modalContent: {
-    backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 8,
-    width: "80%",
-    maxHeight: "60%",
-  },
-  modalItem: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  successModalContent: {
+  modalBox: {
     backgroundColor: "#fff",
     padding: 20,
-    borderRadius: 10,
-    alignItems: "center",
-    width: "80%",
-  },
-  successText: {
-    fontSize: 16,
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  successButton: {
-    backgroundColor: "#e3342f",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
     borderRadius: 8,
+    alignItems: "center",
   },
-  successButtonText: {
-    color: "#fff",
-    fontWeight: "700",
+  modalText: {
     fontSize: 16,
+    fontWeight: "bold",
+    color: "green",
   },
 });

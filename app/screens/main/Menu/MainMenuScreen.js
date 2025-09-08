@@ -60,8 +60,17 @@ const MainNavigationMenuScreen = () => {
       color: "#A45CFF",
       description: "Get in touch with us",
     },
-    ...(!userToken
+    ...(userToken
       ? [
+          {
+            label: "User Tracking",
+            screen: "UserTracking",
+            icon: "crosshairs",
+            color: "#A45CFF",
+            description: "Keep track of your location",
+          },
+        ]
+      : [
           {
             label: "Login",
             parent: "Auth",
@@ -78,8 +87,7 @@ const MainNavigationMenuScreen = () => {
             color: "#A45CFF",
             description: "Create a new account",
           },
-        ]
-      : []),
+        ]),
   ];
 
   return (
@@ -209,7 +217,7 @@ const styles = StyleSheet.create({
   },
   menuLabel: {
     fontSize: 18,
-    marginBottom:2,
+    marginBottom: 2,
     fontFamily: fontNames.playfair.semiBold,
     color: "#070707ff",
     textAlign: "center",

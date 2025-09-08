@@ -9,6 +9,11 @@ export const baseQuery = async (args, api, extraOptions) => {
   try {
     const token = await AsyncStorage.getItem("accessToken");
 
+    // Normalize args if it's a string
+    if (typeof args === "string") {
+      args = { url: args, headers: {} };
+    }
+
     // Inject token if found
     if (token) {
       args.headers = {
@@ -18,10 +23,8 @@ export const baseQuery = async (args, api, extraOptions) => {
     }
 
     const result = await rawBaseQuery(args, api, extraOptions);
-
     return result;
   } catch (error) {
-    // Make sure we return a plain serializable object
     return {
       error: {
         status: "FETCH_ERROR",
