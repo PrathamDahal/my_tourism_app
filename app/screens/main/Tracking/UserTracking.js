@@ -154,102 +154,109 @@ const UserTracking = () => {
   }
 
   const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
+  <!DOCTYPE html>
+  <html>
+  <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body { margin: 0; padding: 0; }
-        #map { height: 100vh; width: 100vw; }
+      body { margin: 0; padding: 0; }
+      #map { height: 100vh; width: 100vw; }
     </style>
-    </head>
-    <body>
+  </head>
+  <body>
     <div id="map"></div>
     <script>
-        let map;
-        let userMarker;
-        let otherMarkers = {};
-        let trailPolyline;
-        let firstLoad = true;
+      let map;
+      let userMarker;
+      let otherMarkers = {};
+      let trailPolyline;
+      let firstLoad = true;
 
-        // Initialize map
-        map = L.map('map').setView([${location.latitude}, ${location.longitude}], 15);
-        
-        // Add OpenStreetMap tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
-
-        // Custom icons
-        const userIcon = L.divIcon({
+      // Custom icons
+      const userIcon = L.divIcon({
         className: 'user-location-marker',
         html: '<div style="width: 20px; height: 20px; border-radius: 20px; background-color: #4A90E2; border: 3px solid white;"></div>',
         iconSize: [40, 40],
-        iconAnchor: [15, 15]
-        });
+        iconAnchor: [20, 20]
+      });
 
-        const otherIcon = L.divIcon({
+      const otherIcon = L.divIcon({
         className: 'other-user-marker',
         html: '<div style="width: 15px; height: 15px; border-radius: 7.5px; background-color: #FF0000; border: 2px solid white;"></div>',
         iconSize: [30, 30],
         iconAnchor: [15, 15]
-        });
+      });
 
-        // Update map from React Native
-        function updateMap(data) {
+      // Initialize map at given coords
+      map = L.map('map').setView([${location.latitude}, ${location.longitude}], 15);
+
+      // Add OpenStreetMap tiles
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      // Add user marker immediately
+      userMarker = L.marker([${location.latitude}, ${location.longitude}], { icon: userIcon })
+        .addTo(map)
+        .bindPopup('Your Location');
+
+      console.log("✅ User marker initialized at", ${location.latitude}, ${location.longitude});
+
+      // Update map from React Native
+      function updateMap(data) {
+        console.log("📩 updateMap called:", data);
         const { location, markers, trail } = data;
 
         // Update user marker
         if (userMarker) {
-            userMarker.setLatLng([location.latitude, location.longitude]);
+          userMarker.setLatLng([location.latitude, location.longitude]);
         } else {
-            userMarker = L.marker([location.latitude, location.longitude], { icon: userIcon })
+          userMarker = L.marker([location.latitude, location.longitude], { icon: userIcon })
             .addTo(map)
             .bindPopup('Your Location');
         }
 
         // Update other user markers
         markers.forEach(marker => {
-            if (marker.userId === 'currentUser') return; // Skip current user
-
-            if (otherMarkers[marker.userId]) {
+          if (marker.userId === 'currentUser') return; // skip current user
+          if (otherMarkers[marker.userId]) {
             otherMarkers[marker.userId].setLatLng([marker.lat, marker.lng]);
-            } else {
+          } else {
             otherMarkers[marker.userId] = L.marker([marker.lat, marker.lng], { icon: otherIcon })
-                .addTo(map)
-                .bindPopup(\`User \${marker.userId}\`);
-            }
+              .addTo(map)
+              .bindPopup(\`User \${marker.userId}\`);
+          }
         });
 
-        // Remove markers that no longer exist
+        // Remove old markers
         Object.keys(otherMarkers).forEach(userId => {
-            if (!markers.find(m => m.userId === userId)) {
+          if (!markers.find(m => m.userId === userId)) {
             map.removeLayer(otherMarkers[userId]);
             delete otherMarkers[userId];
-            }
+          }
         });
 
-        // Update trail polyline
+        // Update trail
         if (trailPolyline) {
-            trailPolyline.setLatLngs(trail.map(p => [p.lat, p.lng]));
+          trailPolyline.setLatLngs(trail.map(p => [p.lat, p.lng]));
         } else if (trail.length > 0) {
-            trailPolyline = L.polyline(trail.map(p => [p.lat, p.lng]), { color: '#FF0000', weight: 3 }).addTo(map);
+          trailPolyline = L.polyline(trail.map(p => [p.lat, p.lng]), { color: '#FF0000', weight: 3 }).addTo(map);
         }
 
-        // Recenter map only on first load
+        // Recenter map only first time
         if (firstLoad) {
-            map.setView([location.latitude, location.longitude], 15);
-            firstLoad = false;
+          map.setView([location.latitude, location.longitude], 15);
+          firstLoad = false;
         }
-        }
+      }
 
-        // For debugging
-        window.updateMap = updateMap;
+      // Make function callable from RN
+      window.updateMap = updateMap;
     </script>
-    </body>
-    </html>
+  </body>
+  </html>
 `;
 
   return (
