@@ -8,33 +8,36 @@ export default {
     icon: "./assets/T-App-icon.png",
     userInterfaceStyle: "light",
     // newArchEnabled: false,
+    updates: {
+      enabled: true,
+      checkAutomatically: "ON_LOAD",
+      fallbackToCacheTimeout: 0,
+    },
     splash: {
       image: "./assets/T-App-Splash-icon.png",
       resizeMode: "contain",
-      backgroundColor: "#ffffff"
+      backgroundColor: "#ffffff",
     },
     assetBundlePatterns: ["**/*"],
     ios: {
-      supportsTablet: true
+      supportsTablet: true,
     },
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/T-App-icon.png",
-        backgroundColor: "#ffffff"
+        backgroundColor: "#ffffff",
       },
       edgeToEdgeEnabled: true,
-      package: "com.firstham_01.my_tourism_app"
+      package: "com.firstham_01.my_tourism_app",
     },
     web: {
-      favicon: "./assets/T-App-icon.png"
+      favicon: "./assets/T-App-icon.png",
     },
     extra: {
       eas: {
-        projectId: "2f22dd91-f450-4023-9e85-2151ab37ae45"
-      }
+        projectId: "2f22dd91-f450-4023-9e85-2151ab37ae45",
+      },
     },
-    plugins: [
-      "expo-font"
-    ]
-  }
+    plugins: ["expo-font"],
+  },
 };

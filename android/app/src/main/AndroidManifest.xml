@@ -28,6 +28,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="exp+mytourismapp"/>
+        <data android:scheme="com.firstham_01.my_tourism_app"/>
       </intent-filter>
     </activity>
   </application>
