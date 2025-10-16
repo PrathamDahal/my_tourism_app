@@ -10,8 +10,6 @@ export default {
     // newArchEnabled: false,
     updates: {
       enabled: true,
-      checkAutomatically: "ON_LOAD",
-      fallbackToCacheTimeout: 0,
     },
     splash: {
       image: "./assets/T-App-Splash-icon.png",
@@ -28,7 +26,7 @@ export default {
         backgroundColor: "#ffffff",
       },
       edgeToEdgeEnabled: true,
-      package: "com.firstham_01.my_tourism_app",
+      package: "com.DeeyoSoftSolutions.my_tourism_app",
     },
     web: {
       favicon: "./assets/T-App-icon.png",
