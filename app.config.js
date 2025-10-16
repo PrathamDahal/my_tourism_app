@@ -31,11 +31,6 @@ export default {
     web: {
       favicon: "./assets/T-App-icon.png",
     },
-    extra: {
-      eas: {
-        projectId: "2f22dd91-f450-4023-9e85-2151ab37ae45",
-      },
-    },
     plugins: ["expo-font"],
   },
 };
