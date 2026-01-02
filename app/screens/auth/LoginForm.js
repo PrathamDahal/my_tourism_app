@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useLoginMutation } from "../../services/auth/authApiSlice";
-import ForgetPasswordModal from "../../custom/ForgetPasswordModal"; // Make sure this modal is React Native compatible
+import ForgetPasswordModal from "../../custom/ForgetPasswordModal";
 import { Feather } from "@expo/vector-icons";
 import { useAuth } from "./../../context/AuthContext";
 import { fontNames } from "../../config/font";
@@ -24,7 +24,7 @@ const LoginForm = () => {
   const [showModal, setShowModal] = useState(false);
 
   const { login: contextLogin } = useAuth();
-  const [login, { isLoading, isError }] = useLoginMutation();
+  const [login, { isLoading, error }] = useLoginMutation();
 
   const navigation = useNavigation();
 
@@ -32,23 +32,60 @@ const LoginForm = () => {
   const closeModal = () => setShowModal(false);
 
   const handleLogin = async () => {
+    // ✅ Basic validation
+    if (!email || !password) {
+      Alert.alert("Missing Information", "Please enter both email and password");
+      return;
+    }
+
     try {
       const response = await login({ email, password }).unwrap();
+      
       if (!response.accessToken || !response.refreshToken) {
         console.warn("Tokens missing:", response);
+        Alert.alert("Login Error", "Invalid response from server");
+        return;
       }
 
       const { accessToken, refreshToken } = response;
 
-      contextLogin({accessToken, refreshToken});
+      // ✅ Save to context (which should save to AsyncStorage)
+      await contextLogin({ accessToken, refreshToken });
 
+      // ✅ Navigate to main app
       navigation.reset({
         index: 0,
         routes: [{ name: "MainStack" }],
       });
     } catch (err) {
       console.log("Login failed:", err);
-      Alert.alert("Login failed", "Please check your credentials");
+      
+      // ✅ Handle different error types
+      if (err.status === 429) {
+        Alert.alert(
+          "Too Many Attempts",
+          "You have made too many login attempts. Please wait a few minutes and try again.",
+          [{ text: "OK" }]
+        );
+      } else if (err.status === 401) {
+        Alert.alert(
+          "Login Failed",
+          "Invalid email or password. Please try again.",
+          [{ text: "OK" }]
+        );
+      } else if (err.status === "FETCH_ERROR") {
+        Alert.alert(
+          "Network Error",
+          "Unable to connect to the server. Please check your internet connection.",
+          [{ text: "OK" }]
+        );
+      } else {
+        Alert.alert(
+          "Login Failed",
+          err.data?.message || "An unexpected error occurred. Please try again.",
+          [{ text: "OK" }]
+        );
+      }
     }
   };
 
@@ -74,8 +111,9 @@ const LoginForm = () => {
           onChangeText={setEmail}
           autoCapitalize="none"
           autoCorrect={false}
-          keyboardType="default"
+          keyboardType="email-address"
           returnKeyType="next"
+          editable={!isLoading} // ✅ Disable while loading
         />
       </View>
 
@@ -89,31 +127,40 @@ const LoginForm = () => {
             onChangeText={setPassword}
             secureTextEntry={!passwordVisible}
             returnKeyType="done"
+            onSubmitEditing={handleLogin} // ✅ Allow enter key to submit
+            editable={!isLoading} // ✅ Disable while loading
           />
           <TouchableOpacity
             onPress={() => setPasswordVisible(!passwordVisible)}
             style={styles.eyeIcon}
             activeOpacity={0.7}
+            disabled={isLoading} // ✅ Disable while loading
           >
             <Feather
               name={passwordVisible ? "eye" : "eye-off"}
               size={20}
-              color="#666"
+              color={isLoading ? "#CCC" : "#666"}
             />
           </TouchableOpacity>
         </View>
       </View>
 
       <View style={styles.row}>
-        <TouchableOpacity onPress={openModal}>
-          <Text style={styles.forgotPasswordText}>Forget Password?</Text>
+        <TouchableOpacity onPress={openModal} disabled={isLoading}>
+          <Text style={[
+            styles.forgotPasswordText,
+            isLoading && styles.disabledText
+          ]}>
+            Forget Password?
+          </Text>
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity
         style={[styles.button, isLoading && styles.buttonDisabled]}
         onPress={handleLogin}
-        disabled={isLoading}
+        disabled={isLoading} // ✅ Prevent double-clicks
+        activeOpacity={0.8}
       >
         {isLoading ? (
           <ActivityIndicator color="#fff" />
@@ -122,17 +169,26 @@ const LoginForm = () => {
         )}
       </TouchableOpacity>
 
-      {isError && (
+      {/* ✅ Display error message if present */}
+      {error && (
         <Text style={styles.errorText}>
-          {isError?.data?.message || "Login failed. Please try again."}
+          {error.status === 429 
+            ? "Too many attempts. Please wait."
+            : error.data?.message || "Login failed. Please try again."}
         </Text>
       )}
 
       <TouchableOpacity
         style={styles.createAccountContainer}
         onPress={() => navigation.navigate("SignUp")}
+        disabled={isLoading} // ✅ Disable while loading
       >
-        <Text style={styles.createAccountText}>CREATE AN ACCOUNT</Text>
+        <Text style={[
+          styles.createAccountText,
+          isLoading && styles.disabledText
+        ]}>
+          CREATE AN ACCOUNT
+        </Text>
       </TouchableOpacity>
 
       <ForgetPasswordModal showModal={showModal} closeModal={closeModal} />
@@ -151,7 +207,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 36,
     fontWeight: "300",
-    color: "#FBBF24", // yellow-400
+    color: "#FBBF24",
     marginBottom: 10,
     fontFamily: fontNames.openSans.regular,
     textAlign: "center",
@@ -168,12 +224,12 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontFamily: fontNames.openSans.regular,
-    color: "#4B5563", // gray-700
+    color: "#4B5563",
     marginBottom: 6,
   },
   input: {
     borderWidth: 1,
-    borderColor: "#D1D5DB", // gray-300
+    borderColor: "#D1D5DB",
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -187,40 +243,24 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     alignItems: "center",
   },
-  checkboxContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
-    borderRadius: 5,
-    marginRight: 8,
-  },
-  checkedBox: {
-    backgroundColor: "#DC2626", // red-600
-    borderColor: "#DC2626",
-  },
-  checkboxLabel: {
-    fontSize: 14,
-    color: "#111827", // gray-900
-  },
   forgotPasswordText: {
     fontSize: 14,
-    color: "#4F46E5", // indigo-600
+    color: "#4F46E5",
+  },
+  // ✅ New style for disabled text
+  disabledText: {
+    opacity: 0.5,
   },
   button: {
     width: "100%",
-    backgroundColor: "#DC2626", // red-600
+    backgroundColor: "#DC2626",
     paddingVertical: 15,
     borderRadius: 50,
     alignItems: "center",
-    transform: [{ scale: 1 }],
   },
   buttonDisabled: {
-    backgroundColor: "#B91C1C", // darker red
+    backgroundColor: "#B91C1C",
+    opacity: 0.7, // ✅ Visual feedback for disabled state
   },
   buttonText: {
     color: "#fff",
@@ -232,6 +272,7 @@ const styles = StyleSheet.create({
     color: "#DC2626",
     marginTop: 10,
     textAlign: "center",
+    fontSize: 14,
   },
   createAccountContainer: {
     marginTop: 20,
@@ -243,7 +284,6 @@ const styles = StyleSheet.create({
     fontFamily: fontNames.openSans.regular,
     fontWeight: "semi-bold",
   },
-
   passwordInputWrapper: {
     position: "relative",
     width: "100%",

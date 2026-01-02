@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   View,
   Text,
@@ -5,37 +6,49 @@ import {
   Image,
   StyleSheet,
   Dimensions,
-  SafeAreaView,
   Platform,
   FlatList,
+  ActivityIndicator,
+  TouchableOpacity,
 } from "react-native";
-import { Activities } from "../../data/Activities";
-import Icon from "react-native-vector-icons/FontAwesome";
-import { TouchableOpacity } from "react-native";
+import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import RatingStars from "../../custom/RatingStars";
-import { useState } from "react";
-import { MaterialIcons } from "@expo/vector-icons";
+// import RatingStars from "../../custom/RatingStars";
+import { Activities } from "../../data/Activities";
+import { useGetDestinationBySlugQuery } from "../../services/destinationApi"; 
+import { SafeAreaView } from "react-native-safe-area-context";
+import { fontNames } from "../../config/font";
+import { API_BASE_URL } from "../../../config";
+
 
 const DestinationDetails = ({ route }) => {
-  const { destination } = route.params;
+  const { slug } = route.params;
   const navigation = useNavigation();
-
   const [expanded, setExpanded] = useState(false);
-  const [activeTab, setActiveTab] = useState("Info"); // Default to Info tab
+  const [activeTab, setActiveTab] = useState("Info");
+
+  const {
+    data: destination,
+    isLoading,
+    isError,
+  } = useGetDestinationBySlugQuery(slug);
+
   const windowWidth = Dimensions.get("window").width;
   const isTablet =
     Platform.isPad || (Platform.OS === "android" && windowWidth >= 600);
   const limit = isTablet ? 1000 : 500;
-  const toggleExpanded = () => {
-    setExpanded(!expanded);
-  };
-  const activitiesData = Activities.map((item, index) => ({
-    ...item,
-    id: index.toString(), // Ensure each item has a unique ID
-  }));
 
-  if (!destination) {
+  const toggleExpanded = () => setExpanded(!expanded);
+
+  if (isLoading)
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#C62828" />
+        <Text>Loading destination...</Text>
+      </View>
+    );
+
+  if (isError || !destination) {
     return (
       <View style={styles.notFoundContainer}>
         <Text style={styles.notFoundText}>Destination not found</Text>
@@ -43,24 +56,157 @@ const DestinationDetails = ({ route }) => {
     );
   }
 
-  const mainImage = destination.image[0];
+  const activitiesData = Activities.map((item, index) => ({
+    ...item,
+    id: index.toString(),
+  }));
 
-  // Render content based on active tab
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "Attractions":
-        return (
-          <View style={styles.tabContent}>
-            <Text style={styles.tabText}>Attractions content goes here</Text>
-            {/* Replace with your actual attractions data */}
+  const mainImage = destination.heroImageUrl
+    ? `${API_BASE_URL}${destination.heroImageUrl}`
+    : null;
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView>
+        {/* Hero Image */}
+        <View style={styles.mainImageContainer}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <MaterialIcons name="arrow-back-ios" size={32} color="#a7a5a5ff" />
+          </TouchableOpacity>
+
+          {destination.images?.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ paddingHorizontal: 16, marginBottom: 16 }}
+            >
+              {destination.images.map((img, idx) => (
+                <Image
+                  key={idx}
+                  source={{ uri: `${API_BASE_URL}${img}` }}
+                  style={{
+                    width: 120,
+                    height: 80,
+                    borderRadius: 8,
+                    marginRight: 8,
+                  }}
+                  resizeMode="cover"
+                />
+              ))}
+            </ScrollView>
+          )}
+
+          {mainImage ? (
+            <Image
+              source={{ uri: mainImage }}
+              style={[styles.mainImage, { width: windowWidth }]}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.mainImage, { backgroundColor: "#ccc" }]} />
+          )}
+
+          <View style={styles.titleOverlay}>
+            <FontAwesome name="map-marker" size={24} color="#b8b7b7ff" />
+            <Text style={styles.titleText}>{destination.name}</Text>
           </View>
-        );
-      case "Activities":
-        return (
+        </View>
+
+        {/* Summary + Description */}
+        <View style={styles.contentContainer}>
+          <Text style={styles.summaryText}>{destination.summary}</Text>
+
+          <TouchableOpacity onPress={toggleExpanded}>
+            <Text style={styles.paragraph}>
+              {expanded || (destination.description?.length ?? 0) <= limit
+                ? destination.description
+                : `${destination.description?.substring(0, limit)}...`}
+              {(destination.description?.length ?? 0) > limit && (
+                <Text style={{ color: "#C62828", fontWeight: "bold" }}>
+                  {expanded ? " Read less" : " Read more"}
+                </Text>
+              )}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Tabs */}
+        <View style={styles.tabContainer}>
+          {["Info", "Attractions", "Activities"].map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              style={[
+                styles.tabButton,
+                activeTab === tab && styles.activeTabButton,
+              ]}
+              onPress={() => setActiveTab(tab)}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === tab && styles.activeTabText,
+                ]}
+              >
+                {tab}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Tab Content */}
+        {activeTab === "Info" && (
+          <View style={styles.tabContent}>
+            <View style={styles.infoRow}>
+              <View style={styles.infoItem}>
+                <FontAwesome name="globe" size={22} color="#b22222" />
+                <Text style={styles.infoLabel}>
+                  Latitude: {destination.lat}
+                </Text>
+              </View>
+              <View style={styles.infoItem}>
+                <FontAwesome name="globe" size={22} color="#b22222" />
+                <Text style={styles.infoLabel}>
+                  Longitude: {destination.lng}
+                </Text>
+              </View>
+            </View>
+
+            <View
+              style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", marginLeft: 2, marginTop: 8 }}
+            >
+              <Text style={{ fontSize: 14, marginRight: 4, color: "#262626ff" }}>Tags:</Text>
+              {destination.tags?.map((tag, i) => (
+                <View
+                  key={i}
+                  style={{
+                    backgroundColor: "#e8e8e8",
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderRadius: 16,
+                    margin: 4,
+                  }}
+                >
+                  <Text style={{ fontSize: 14, fontFamily: fontNames.openSans.semibold, color: "#555" }}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {activeTab === "Attractions" && (
+          <View style={styles.tabContent}>
+            <Text style={styles.tabText}>Attractions coming soon...</Text>
+          </View>
+        )}
+
+        {activeTab === "Activities" && (
           <View style={styles.tabContent}>
             <FlatList
               data={activitiesData}
-              numColumns={2} // This creates the 2-column layout
+              numColumns={2}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
                 <View style={styles.activityCard}>
@@ -73,194 +219,28 @@ const DestinationDetails = ({ route }) => {
               contentContainerStyle={styles.activitiesContainer}
             />
           </View>
-        );
-      case "Info":
-      default:
-        return (
-          <View style={styles.tabContent}>
-            <View style={styles.infoContainer}>
-              <View style={styles.infoRow}>
-                <View style={styles.infoItem}>
-                  <Icon name="calendar" size={20} color="#b22222" />
-                  <View style={{ marginLeft: 8 }}>
-                    <Text style={styles.infoLabel}>Best Time To Visit</Text>
-                    <Text style={styles.infoValue}>April To October</Text>
-                  </View>
-                </View>
-                <View style={styles.infoItem}>
-                  <Icon name="sun-o" size={20} color="#b22222" />
-                  <View style={{ marginLeft: 8 }}>
-                    <Text style={styles.infoLabel}>Climate</Text>
-                    <Text style={styles.infoValue}>Mediterranean</Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.infoRow}>
-                <View style={styles.infoItem}>
-                  <Icon name="language" size={20} color="#b22222" />
-                  <View style={{ marginLeft: 8 }}>
-                    <Text style={styles.infoLabel}>Language</Text>
-                    <Text style={styles.infoValue}>Greek</Text>
-                  </View>
-                </View>
-                <View style={styles.infoItem}>
-                  <Icon name="dollar" size={20} color="#b22222" />
-                  <View style={{ marginLeft: 8 }}>
-                    <Text style={styles.infoLabel}>Currency</Text>
-                    <Text style={styles.infoValue}>Euro (eur)</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </View>
-        );
-    }
-  };
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView>
-        {/* Main Image with Title */}
-        <View style={styles.mainImageContainer}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <MaterialIcons name="arrow-back-ios" size={32} color="#fff" />
-          </TouchableOpacity>
-          <Image
-            source={{ uri: mainImage.url }}
-            style={[styles.mainImage, { width: windowWidth }]}
-            resizeMode="cover"
-          />
-          <View style={styles.titleOverlay}>
-            <Icon name="map-marker" size={24} color="#fff" />
-            <Text style={styles.titleText}>{destination.title}</Text>
-          </View>
-        </View>
-
-        {/* Description (always visible) */}
-        <View style={styles.contentContainer}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginBottom: 16,
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <RatingStars rating={destination.rating} />
-            </View>
-            <Text style={{ marginLeft: 8, fontSize: 18, color: "#555" }}>
-              {destination.rating.toFixed(1)}
-            </Text>
-          </View>
-
-          <TouchableOpacity onPress={toggleExpanded}>
-            <Text style={styles.paragraph}>
-              {expanded || destination.description.length <= limit
-                ? destination.description
-                : `${destination.description.substring(0, limit)}...`}
-              {destination.description.length > limit && (
-                <Text style={{ color: "#C62828", fontWeight: "bold" }}>
-                  {expanded ? " Read less" : " Read more"}
-                </Text>
-              )}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Tab Navigation */}
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[
-              styles.tabButton,
-              activeTab === "Info" && styles.activeTabButton,
-            ]}
-            onPress={() => setActiveTab("Info")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "Info" && styles.activeTabText,
-              ]}
-            >
-              Info
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.tabButton,
-              activeTab === "Attractions" && styles.activeTabButton,
-            ]}
-            onPress={() => setActiveTab("Attractions")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "Attractions" && styles.activeTabText,
-              ]}
-            >
-              Attractions
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.tabButton,
-              activeTab === "Activities" && styles.activeTabButton,
-            ]}
-            onPress={() => setActiveTab("Activities")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "Activities" && styles.activeTabText,
-              ]}
-            >
-              Activities
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Render the active tab content */}
-        {renderTabContent()}
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
   notFoundContainer: {
     padding: 32,
     alignItems: "center",
     justifyContent: "center",
   },
-  notFoundText: {
-    color: "red",
-    fontSize: 16,
-  },
-  mainImageContainer: {
-    position: "relative",
-    marginBottom: 24,
-  },
-  mainImage: {
-    height: 300,
-  },
-  backButton: {
-    position: "absolute",
-    zIndex: 2,
-    top: 40,
-    left: 20,
-  },
+  notFoundText: { color: "red", fontSize: 16 },
+  mainImageContainer: { position: "relative", marginBottom: 24 },
+  mainImage: { height: 300 },
+  backButton: { position: "absolute", zIndex: 2, top: 40, left: 20 },
   titleOverlay: {
     position: "absolute",
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "baseline",
     bottom: 16,
     left: 0,
     right: 0,
@@ -270,89 +250,44 @@ const styles = StyleSheet.create({
     fontSize: 24,
     marginLeft: 10,
     color: "white",
-    fontFamily: "",
     fontWeight: "500",
-    textShadowColor: "rgba(0, 0, 0, 0.75)",
+    textShadowColor: "rgba(0,0,0,0.75)",
     textShadowOffset: { width: -1, height: 1 },
     textShadowRadius: 10,
   },
-  contentContainer: {
-    paddingHorizontal: 24,
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
+  contentContainer: { paddingHorizontal: 24, marginBottom: 24 },
+  summaryText: {
+    fontSize: 18,
     fontWeight: "500",
-    marginBottom: 16,
     color: "#333",
+    marginBottom: 8,
   },
-  paragraph: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: "#666",
-    marginBottom: 16,
-  },
+  paragraph: { fontSize: 16, lineHeight: 24, color: "#666" },
   tabContainer: {
     flexDirection: "row",
+    paddingVertical: 4,
     justifyContent: "space-evenly",
     borderRadius: 10,
-    paddingVertical: 2,
     backgroundColor: "#C62828",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e21e1eff",
     marginHorizontal: 22,
     marginBottom: 16,
   },
-  tabButton: {
-    width: "32%",
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-  },
-  activeTabButton: {
-    backgroundColor: "#fff",
-  },
-  tabText: {
-    fontSize: 16,
-    textAlign: "center",
-    color: "#fff",
-  },
-  activeTabText: {
-    color: "#000",
-    fontWeight: "semi-bold",
-  },
-  tabContent: {
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  infoContainer: {
-    paddingHorizontal: 24,
-    marginBottom: 24,
-  },
+  tabButton: { width: "32%", paddingVertical: 6, borderRadius: 10 },
+  activeTabButton: { backgroundColor: "#fff" },
+  tabText: { fontSize: 16, fontFamily: fontNames.nunito.semiBold, textAlign: "center", color: "#fff" },
+  activeTabText: { color: "#000", fontWeight: "600" },
+  tabContent: { paddingHorizontal: 24, marginBottom: 16 },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 16,
   },
-  infoItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: "#888",
-  },
-  infoValue: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#333",
-  },
-  activitiesContainer: {
-    padding: 16,
-  },
+  infoItem: { flexDirection: "row", alignItems: "center", flex: 1 },
+  infoLabel: { fontSize: 14, color: "#555", marginLeft: 8 },
+  infoValue: { fontSize: 16, fontWeight: "500", color: "#333" },
+  activitiesContainer: { padding: 16 },
   activityCard: {
-    width: "48%", // Leaves some space for margin
+    width: "48%",
     margin: "1%",
     padding: 12,
     backgroundColor: "#f5f5f5",
@@ -369,24 +304,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 8,
   },
-  activityText: {
-    flex: 1,
-    fontSize: 14,
-  },
-  numberText: {
-    color: "white",
-    fontSize: 14,
-  },
-  activityText: {
-    fontSize: 16,
-    flex: 1,
-    fontFamily: "OpenSans",
-  },
-  dividerImage: {
-    width: "100%",
-    height: 20,
-    marginVertical: 8,
-  },
+  numberText: { color: "white", fontSize: 14 },
+  activityText: { fontSize: 16, flex: 1 },
 });
 
 export default DestinationDetails;

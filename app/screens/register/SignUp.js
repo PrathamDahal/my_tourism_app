@@ -16,7 +16,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { useRegisterUserMutation } from "../../services/registerApi";
-import Icon from "react-native-vector-icons/FontAwesome";
+import { FontAwesome } from "@expo/vector-icons";
 import { fontNames } from "../../config/font";
 
 const RegisterScreen = () => {
@@ -270,7 +270,7 @@ const RegisterScreen = () => {
                 style={styles.iconRight}
                 onPress={() => setShowPassword(!showPassword)}
               >
-                <Icon
+                <FontAwesome
                   name={showPassword ? "eye" : "eye-slash"}
                   size={20}
                   color="#6b7280"
@@ -301,7 +301,7 @@ const RegisterScreen = () => {
                 style={styles.iconRight}
                 onPress={() => setShowConfirmPassword(!showConfirmPassword)}
               >
-                <Icon
+                <FontAwesome
                   name={showConfirmPassword ? "eye" : "eye-slash"}
                   size={20}
                   color="#6b7280"

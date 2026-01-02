@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { useFetchUserProfileQuery } from "../../services/userApi";
 import ProtectedRoute from "../../navigation/ProtectedRoute";
-import Icon from "react-native-vector-icons/FontAwesome";
+import { FontAwesome } from "@expo/vector-icons";
 
 const MyProfile = () => {
   const { data, isLoading, isError } = useFetchUserProfileQuery();
@@ -70,7 +70,7 @@ const MyProfile = () => {
 
 const InfoRow = ({ icon, label, value }) => (
   <View style={styles.infoRow}>
-    <Icon name={icon} size={16} color="#4B5563" style={{ width: 24 }} />
+    <FontAwesome name={icon} size={16} color="#4B5563" style={{ width: 24 }} />
     <Text style={styles.label}>{label}:</Text>
     <Text style={styles.value}>{value || "N/A"}</Text>
   </View>

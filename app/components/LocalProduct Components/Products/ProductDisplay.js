@@ -65,7 +65,7 @@ const ProductDisplay = () => {
       <Image
         source={
           typeof product.images?.[0] === "string" && product.images[0].trim()
-            ? { uri: `${API_BASE_URL}/${product.images[0]}` }
+            ? { uri: `${API_BASE_URL}${product.images[0]}` }
             : require("../../../../assets/T-App-icon.png")
         }
         style={styles.productImage}

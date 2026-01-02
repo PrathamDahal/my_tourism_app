@@ -9,7 +9,7 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../../../context/AuthContext";
 import UserProfile from "../../../custom/UserProfile";
-import Icon from "react-native-vector-icons/FontAwesome";
+import { FontAwesome } from "@expo/vector-icons";
 import { fontNames } from "../../../config/font";
 
 const MainNavigationMenuScreen = () => {
@@ -124,7 +124,7 @@ const MainNavigationMenuScreen = () => {
               }
             >
               <View style={[styles.iconContainer]}>
-                <Icon name={item.icon} size={40} color={item.color} />
+                <FontAwesome name={item.icon} size={40} color={item.color} />
               </View>
               <Text style={styles.menuLabel}>{item.label}</Text>
               <Text style={styles.menuDescription}>{item.description}</Text>

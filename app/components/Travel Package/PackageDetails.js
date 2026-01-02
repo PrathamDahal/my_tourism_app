@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -8,26 +8,31 @@ import {
   ScrollView,
   Dimensions,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import RatingStars from "../../custom/RatingStars";
 import { fontNames } from "../../config/font";
 import { API_BASE_URL } from "../../../config";
+import { useGetPackageDeparturesQuery } from "../../services/travelDeparturesApi";
 
 const TravelPackageDetails = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  const { packageData } = route.params; // Pass selected package
+  const { packageData } = route.params; // selected package
   const [expanded, setExpanded] = useState(false);
+
   const windowWidth = Dimensions.get("window").width;
   const isTablet =
     Platform.isPad || (Platform.OS === "android" && windowWidth >= 600);
   const limit = isTablet ? 1000 : 500;
 
-  const toggleExpanded = () => {
-    setExpanded(!expanded);
-  };
+  const toggleExpanded = () => setExpanded(!expanded);
+
+  // Fetch departures
+  const { data: departuresData, isLoading: isLoadingDepartures } =
+    useGetPackageDeparturesQuery(packageData.slug);
 
   return (
     <ScrollView style={styles.container}>
@@ -35,7 +40,7 @@ const TravelPackageDetails = () => {
       <ImageBackground
         source={
           packageData.images?.[0]
-            ? { uri: `${API_BASE_URL}/${packageData.images[0]}` }
+            ? { uri: `${API_BASE_URL}${packageData.images[0]}` }
             : { uri: "https://via.placeholder.com/600x400.png?text=No+Image" }
         }
         style={styles.headerImage}
@@ -50,10 +55,12 @@ const TravelPackageDetails = () => {
         </View>
 
         <View style={styles.headerOverlay}>
-          <Text style={styles.title}>{packageData.title}</Text>
+          <Text style={styles.title}>{packageData.name}</Text>
           <View style={styles.locationRow}>
             <Ionicons name="location-sharp" size={14} color="#fff" />
-            <Text style={styles.location}>{packageData.location}</Text>
+            <Text style={styles.location}>
+              {packageData.destinations?.[0]?.name ?? "Unknown Location"}
+            </Text>
           </View>
         </View>
       </ImageBackground>
@@ -62,14 +69,17 @@ const TravelPackageDetails = () => {
       <View style={styles.infoRow}>
         <View style={styles.infoItem}>
           <Ionicons name="time-outline" size={16} color="#000" />
-          <Text style={styles.infoText}>{packageData.duration}</Text>
+          <Text style={styles.infoText}>
+            {packageData.durationDays ?? 0} Days /{" "}
+            {packageData.durationNights ?? 0} Nights
+          </Text>
         </View>
         <View style={styles.infoItem}>
-          <RatingStars rating={packageData.rating} />
-          <Text style={styles.infoText}>{packageData.rating}</Text>
+          <RatingStars rating={packageData.rating ?? 0} />
+          <Text style={styles.infoText}>{packageData.rating ?? 0}</Text>
         </View>
         <View style={styles.priceRow}>
-          <Text style={styles.price}>Npr {packageData.price} </Text>
+          <Text style={styles.price}>Npr {packageData.price ?? 0} </Text>
           <Text style={styles.person}>/person</Text>
         </View>
       </View>
@@ -80,10 +90,10 @@ const TravelPackageDetails = () => {
       {/* DESCRIPTION */}
       <TouchableOpacity onPress={toggleExpanded}>
         <Text style={styles.paragraph}>
-          {expanded || packageData.description.length <= limit
+          {expanded || packageData.description?.length <= limit
             ? packageData.description
-            : `${packageData.description.substring(0, limit)}...`}
-          {packageData.description.length > limit && (
+            : `${packageData.description?.substring(0, limit)}...`}
+          {packageData.description?.length > limit && (
             <Text style={{ color: "#C62828", fontWeight: "bold" }}>
               {expanded ? " Read less" : " Read more"}
             </Text>
@@ -96,7 +106,7 @@ const TravelPackageDetails = () => {
         <Text style={styles.detailsTitle}>
           <Ionicons name="checkmark-circle" size={20} color="green" /> Included:
         </Text>
-        {packageData.included.map((inc, i) => (
+        {packageData.included?.map((inc, i) => (
           <View key={i} style={styles.detailRow}>
             <Ionicons name="checkmark-circle" size={20} color="green" />
             <Text style={styles.detailText}>{inc}</Text>
@@ -106,7 +116,7 @@ const TravelPackageDetails = () => {
         <Text style={styles.detailsTitle}>
           <Ionicons name="close-circle" size={20} color="red" /> Not Included:
         </Text>
-        {packageData.notIncluded.map((ninc, i) => (
+        {packageData.notIncluded?.map((ninc, i) => (
           <View key={i} style={styles.detailRow}>
             <Ionicons name="close-circle" size={20} color="red" />
             <Text style={styles.detailText}>{ninc}</Text>
@@ -114,30 +124,47 @@ const TravelPackageDetails = () => {
         ))}
       </View>
 
-      {packageData.availableDepartures &&
-        packageData.availableDepartures.length > 0 && (
-          <View style={styles.departureContainer}>
-            <Text style={styles.departureTitle}>Available Departures</Text>
-            {packageData.availableDepartures.map((departure, index) => (
-              <View key={index} style={styles.departureCard}>
-                <View>
-                  <Text style={styles.departureDate}>{departure.date}</Text>
-                  <Text style={styles.departureSpots}>
-                    {departure.spotsAvailable}
+      {/* Available Departures */}
+      {packageData.usesDepartures && (
+        <View style={styles.departureContainer}>
+          <Text style={styles.departureTitle}>Available Departures</Text>
+
+          {isLoadingDepartures ? (
+            <ActivityIndicator
+              size="large"
+              color="#C62828"
+              style={{ marginTop: 20 }}
+            />
+          ) : departuresData?.length > 0 ? (
+            departuresData.map((departure, index) => (
+              <View key={index} style={styles.departureCardProfessional}>
+                <View style={styles.departureInfo}>
+                  <Text style={styles.departureDateProfessional}>
+                    {departure.date}
+                  </Text>
+                  <Text style={styles.departureSpotsProfessional}>
+                    {departure.spotsAvailable} Spots Available
                   </Text>
                 </View>
-                <View style={styles.departurePriceContainer}>
-                  <Text style={styles.departurePrice}>
-                    Rs.{departure.price.toLocaleString()}
+                <View style={styles.departurePriceBadge}>
+                  <Text style={styles.departurePriceProfessional}>
+                    Rs. {departure.price?.toLocaleString() ?? 0}
                   </Text>
-                  <View style={styles.availableBadge}>
-                    <Text style={styles.availableText}>Available</Text>
+                  <View style={styles.availableBadgeProfessional}>
+                    <Text style={styles.availableTextProfessional}>
+                      Available
+                    </Text>
                   </View>
                 </View>
               </View>
-            ))}
-          </View>
-        )}
+            ))
+          ) : (
+            <Text style={{ textAlign: "center", marginTop: 10, color: "#555" }}>
+              No departures available
+            </Text>
+          )}
+        </View>
+      )}
     </ScrollView>
   );
 };
@@ -153,15 +180,8 @@ const styles = StyleSheet.create({
     padding: 15,
     marginTop: 30,
   },
-  backButton: {
-    position: "absolute",
-    zIndex: 2,
-    top: 10,
-    left: 20,
-  },
-  headerOverlay: {
-    padding: 15,
-  },
+  backButton: { position: "absolute", zIndex: 2, top: 10, left: 20 },
+  headerOverlay: { padding: 15 },
   title: { fontSize: 20, fontFamily: fontNames.nunito.bold, color: "#fff" },
   locationRow: { flexDirection: "row", alignItems: "center", marginTop: 4 },
   location: {
@@ -181,7 +201,6 @@ const styles = StyleSheet.create({
   priceRow: { flexDirection: "row", alignItems: "center" },
   price: { color: "green", fontSize: 14, fontWeight: "bold" },
   person: { fontSize: 12, color: "#444" },
-
   aboutTitle: {
     fontSize: 24,
     fontFamily: fontNames.raleway.medium,
@@ -200,7 +219,6 @@ const styles = StyleSheet.create({
     color: "#666",
     marginBottom: 16,
   },
-
   details: {
     paddingHorizontal: 40,
     marginVertical: 10,
@@ -212,11 +230,7 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     textAlign: "center",
   },
-  detailRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 5,
-  },
+  detailRow: { flexDirection: "row", alignItems: "center", marginVertical: 5 },
   detailText: {
     fontSize: 16,
     fontFamily: fontNames.raleway.regular,
@@ -224,62 +238,71 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     textAlign: "center",
   },
-
   departureContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
+    backgroundColor: "#f8fafc",
+    borderRadius: 16,
     padding: 16,
-    marginHorizontal: 40,
+    marginHorizontal: 20,
     marginTop: 20,
     marginBottom: 30,
+    shadowColor: "#080808ff",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    elevation: 2,
   },
   departureTitle: {
     fontSize: 22,
-    fontWeight: "600",
+    fontWeight: "700",
     marginBottom: 16,
     textAlign: "center",
+    color: "#111827",
   },
-  departureCard: {
+  departureCardProfessional: {
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: 10,
+    padding: 16,
     marginBottom: 12,
-    backgroundColor: "#fafafa",
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  departureDate: {
-    fontWeight: "600",
+  departureInfo: {
+    flex: 2,
+  },
+  departureDateProfessional: {
     fontSize: 16,
-    color: "#111827",
+    fontWeight: "600",
+    color: "#1f2937",
   },
-  departureSpots: {
+  departureSpotsProfessional: {
     fontSize: 14,
     color: "#6b7280",
-    marginTop: 2,
-  },
-  departurePriceContainer: {
-    alignItems: "flex-end",
-    justifyContent: "center",
-  },
-  departurePrice: {
-    fontWeight: "700",
-    fontSize: 16,
-    color: "#111827",
-  },
-  availableBadge: {
-    backgroundColor: "#fee2e2",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
     marginTop: 4,
   },
-  availableText: {
-    color: "#b91c1c",
+  departurePriceBadge: {
+    alignItems: "flex-end",
+    justifyContent: "center",
+    flex: 1,
+  },
+  departurePriceProfessional: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#059669",
+  },
+  availableBadgeProfessional: {
+    marginTop: 6,
+    paddingVertical: 2,
+    paddingHorizontal: 10,
+    backgroundColor: "#d1fae5",
+    borderRadius: 12,
+  },
+  availableTextProfessional: {
+    color: "#065f46",
+    fontWeight: "600",
     fontSize: 12,
-    fontWeight: "500",
   },
 });

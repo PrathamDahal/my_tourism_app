@@ -12,7 +12,7 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { useGetProductsByCategoryQuery } from "../../../services/productApi";
 import { API_BASE_URL } from "../../../../config";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import FilterProductComponent from "./FilterProducts";
 
@@ -39,7 +39,9 @@ const CategoryProducts = ({ route }) => {
   useEffect(() => {
     if (products?.length) {
       // Filter products to only include active ones
-      const activeProducts = products.filter(product => product.status === "active");
+      const activeProducts = products.filter(
+        (product) => product.status === "active"
+      );
       setFilteredProducts(activeProducts);
     }
   }, [products]);
@@ -62,7 +64,7 @@ const CategoryProducts = ({ route }) => {
       <Image
         source={
           typeof product.images?.[0] === "string" && product.images[0].trim()
-            ? { uri: `${API_BASE_URL}/${product.images[0]}` }
+            ? { uri: `${API_BASE_URL}${product.images[0]}` }
             : require("../../../../assets/T-App-icon.png")
         }
         style={styles.productImage}
@@ -129,7 +131,7 @@ const CategoryProducts = ({ route }) => {
   const uniqueTags = [
     ...new Set(
       products
-        .filter(p => p.status === "active")
+        .filter((p) => p.status === "active")
         .flatMap((p) => {
           try {
             return JSON.parse(p.tags?.[0] || "[]");
@@ -143,7 +145,15 @@ const CategoryProducts = ({ route }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.categoryTitle}>{categoryName}</Text>
+        <View style={styles.leftGroup}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <MaterialIcons name="arrow-back-ios" size={24} color="#080808ff" />
+          </TouchableOpacity>
+          <Text style={styles.categoryTitle}>{categoryName}</Text>
+        </View>
         <View style={styles.totalContainer}>
           <Ionicons name="pricetags" size={18} color="#777" />
           <Text style={styles.totalProductsText}>{totalProducts} Products</Text>
@@ -240,6 +250,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingTop: 36,
   },
+  backButton: {
+    marginRight: 10,
+    padding: 4,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -247,6 +261,10 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     marginTop: 10,
     paddingHorizontal: 8,
+  },
+  leftGroup: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   categoryTitle: {
     fontSize: 22,
@@ -281,16 +299,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     marginTop: 4,
   },
   activeBadge: {
-    backgroundColor: '#4CAF50',
-    color: 'white',
+    backgroundColor: "#4CAF50",
+    color: "white",
   },
   inactiveBadge: {
-    backgroundColor: '#F44336',
-    color: 'white',
+    backgroundColor: "#F44336",
+    color: "white",
   },
   productCard: {
     width: "48%",

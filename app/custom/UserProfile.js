@@ -1,17 +1,21 @@
 import { View, TouchableOpacity, Image, Text, StyleSheet } from "react-native";
-import Icon from "react-native-vector-icons/FontAwesome";
+import { FontAwesome } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { useAuth } from "../context/AuthContext";
 import { useFetchUserProfileQuery } from "../services/userApi";
 import { fontNames } from "../config/font";
+import { API_BASE_URL } from "../../config";
 
 const UserProfile = () => {
   const navigation = useNavigation();
   const { data } = useFetchUserProfileQuery();
   const userData = data;
 
+  // ✅ Use API_BASE_URL if user image exists
   const imageUri =
-    userData?.images || require("../../assets/Images/default-avatar-image.jpg");
+    typeof userData?.images === "string" && userData.images.trim()
+      ? { uri: `${API_BASE_URL}${userData.images}` }
+      : require("../../assets/Images/default-avatar-image.jpg");
+
   const username = userData
     ? `${userData.firstName} ${userData.lastName}`
     : "Guest";
@@ -24,7 +28,7 @@ const UserProfile = () => {
           style={styles.profileButton}
         >
           <Image
-            source={typeof imageUri === "string" ? { uri: imageUri } : imageUri}
+            source={imageUri}
             style={styles.avatar}
           />
           <View style={styles.textContainer}>
@@ -38,14 +42,14 @@ const UserProfile = () => {
 
       <View style={styles.iconsContainer}>
         <TouchableOpacity style={styles.iconButton}>
-          <Icon name="bell" size={24} color="#fff" />
+          <FontAwesome name="bell" size={24} color="#fff" />
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => navigation.navigate("Auth", { screen: "Settings" })}
           style={styles.iconButton}
         >
-          <Icon name="cog" size={24} color="#fff" />
+          <FontAwesome name="cog" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
     </View>

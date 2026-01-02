@@ -1,5 +1,5 @@
 import { View, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 const RatingStars = ({ rating }) => {
   const renderStars = () => {
@@ -7,11 +7,11 @@ const RatingStars = ({ rating }) => {
 
     for (let i = 0; i < 5; i++) {
       if (i < Math.floor(rating)) {
-        stars.push(<Icon key={i} name="star" style={styles.star} />);
+        stars.push(<FontAwesome key={i} name="star" style={styles.star} />);
       } else if (i < Math.ceil(rating) && rating % 1 !== 0) {
-        stars.push(<Icon key={i} name="star-half-empty" style={styles.star} />);
+        stars.push(<FontAwesome key={i} name="star-half-empty" style={styles.star} />);
       } else {
-        stars.push(<Icon key={i} name="star-o" style={styles.star} />);
+        stars.push(<FontAwesome key={i} name="star-o" style={styles.star} />);
       }
     }
 

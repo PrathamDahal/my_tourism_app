@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import Icon from "react-native-vector-icons/FontAwesome";
+import { FontAwesome } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { fontNames } from "../../../config/font";
 import RatingStars from "../../../custom/RatingStars";
@@ -26,6 +26,8 @@ const TravelPackagesScreen = () => {
     isLoading,
     isError,
     error,
+    isFetching,
+    refetch,
   } = useGetTravelPackagesQuery();
 
   if (isLoading) {
@@ -64,8 +66,8 @@ const TravelPackagesScreen = () => {
     // Safely get the first image string
     const firstImage = item?.images?.[0];
 
-    // Construct full URL if it exists
-    const imageUrl = firstImage ? `${API_BASE_URL}/${firstImage}` : null;
+    // Construct full URL
+    const imageUrl = firstImage ? `${API_BASE_URL}${firstImage}` : null;
 
     return (
       <TouchableOpacity
@@ -101,7 +103,7 @@ const TravelPackagesScreen = () => {
         <View style={styles.cardContent}>
           <Text style={styles.cardTitle}>{item?.name ?? "No Title"}</Text>
           <Text style={styles.location}>
-            {item?.destinationsRelation?.[0]?.name ?? null }
+            {item?.destinations?.[0]?.name ?? "Unknown Location"}
           </Text>
           <View style={styles.priceRow}>
             <Text style={styles.price}>Npr {item?.price ?? 0}</Text>
@@ -130,7 +132,7 @@ const TravelPackagesScreen = () => {
           <Text style={styles.headerTitle}>Travel Packages</Text>
         </View>
         <TouchableOpacity style={styles.headerIconButton}>
-          <Icon name="bell" size={20} color="#fff" />
+          <FontAwesome name="bell" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -158,6 +160,8 @@ const TravelPackagesScreen = () => {
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderPackage}
         contentContainerStyle={{ paddingBottom: 20 }}
+        refreshing={isFetching}
+        onRefresh={refetch}
         ListEmptyComponent={
           <View style={{ alignItems: "center", marginTop: 50 }}>
             <Text>No packages found.</Text>

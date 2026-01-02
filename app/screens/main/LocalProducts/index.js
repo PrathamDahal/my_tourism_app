@@ -7,12 +7,15 @@ import {
   ActivityIndicator,
   Image,
   Dimensions,
+  RefreshControl,
 } from "react-native";
 import { useGetCategoriesQuery } from "../../../services/categoryApi";
 import { useGetProductsQuery } from "../../../services/productApi";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useState, useEffect } from "react";
 import { API_BASE_URL } from "../../../../config";
+import { fontNames } from "../../../config/font";
+import { MaterialIcons } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - 40) / 2; // Calculate width for 2-column grid with padding
@@ -32,6 +35,8 @@ const LocalProducts = ({ navigation }) => {
     isLoading: isProductsLoading,
     isError: isProductsError,
     error: productsError,
+    isFetching,
+    refetch,
   } = useGetProductsQuery();
 
   const [showAll, setShowAll] = useState(false);
@@ -40,13 +45,19 @@ const LocalProducts = ({ navigation }) => {
   // Filter products to only include active ones
   useEffect(() => {
     if (products?.data) {
-      const filtered = products.data.filter(product => product.status === "active");
+      const filtered = products.data.filter(
+        (product) => product.status === "active"
+      );
       setActiveProducts(filtered);
     }
   }, [products]);
 
-  const visibleCategories = showAll ? categories : categories?.slice(0, 4);
-  const shouldShowSeeMore = categories?.length > 4;
+  // Fix: Access categories.data instead of categories directly
+  const categoriesData = categories?.data || [];
+  const visibleCategories = showAll
+    ? categoriesData
+    : categoriesData.slice(0, 4);
+  const shouldShowSeeMore = categoriesData.length > 4;
   const formatPrice = (price) => `$${parseFloat(price ?? 0).toFixed(2)}`;
 
   if (isCategoriesLoading || isProductsLoading) {
@@ -91,7 +102,7 @@ const LocalProducts = ({ navigation }) => {
           source={
             typeof product?.images?.[0] === "string" &&
             product?.images[0].trim()
-              ? { uri: `${API_BASE_URL}/${product.images[0]}` }
+              ? { uri: `${API_BASE_URL}${product.images[0]}` }
               : require("../../../../assets/T-App-icon.png")
           }
           style={styles.productImage}
@@ -111,21 +122,47 @@ const LocalProducts = ({ navigation }) => {
   const displayedProducts = activeProducts.slice(0, 15);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        showsHorizontalScrollIndicator={false}
-      >
-        <Text style={styles.header}>Categories</Text>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={isFetching}
+          onRefresh={refetch}
+          colors={["#C62828"]}
+          tintColor="#C62828"
+        />
+      }
+    >
+      <View style={styles.header}>
+        <View style={styles.leftGroup}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <MaterialIcons name="arrow-back-ios" size={24} color="#fff" />
+          </TouchableOpacity>
+
+          <Text style={styles.headerTitle}>Products</Text>
+        </View>
+
+        <TouchableOpacity style={styles.headerIconButton}>
+          <FontAwesome name="bell" size={20} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.content}>
+        <Text style={styles.sectionTitle}>Categories</Text>
 
         <View style={styles.categoriesContainer}>
-          {visibleCategories?.map((category) => (
+          {visibleCategories.map((category) => (
             <TouchableOpacity
               key={category.id}
               style={styles.categoryButton}
               onPress={() =>
                 navigation.navigate("CategoryProducts", {
                   slug: category.slug,
+                  categoryName: category.name,
                 })
               }
             >
@@ -140,15 +177,15 @@ const LocalProducts = ({ navigation }) => {
           </TouchableOpacity>
         )}
 
-        <Text style={styles.sectionHeader}>Featured Products</Text>
+        <Text style={styles.sectionTitle}>Featured Products</Text>
 
         <View style={styles.productsGrid}>
           {displayedProducts.length > 0 ? (
-            displayedProducts.map((product, index) =>
-              renderProductCard(product, index)
-            )
+            displayedProducts.map(renderProductCard)
           ) : (
-            <Text style={styles.noProductsText}>No active products available</Text>
+            <Text style={styles.noProductsText}>
+              No active products available
+            </Text>
           )}
         </View>
 
@@ -158,25 +195,47 @@ const LocalProducts = ({ navigation }) => {
         >
           <Text style={styles.seeAllButtonText}>See All Products</Text>
         </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 32,
     backgroundColor: "#fff",
   },
   header: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 20,
-    color: "#000",
+    backgroundColor: "#C62828",
+    paddingHorizontal: 15,
+    paddingTop: 45,
+    paddingBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  sectionHeader: {
+  leftGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  backButton: {
+    marginRight: 10,
+    padding: 4,
+  },
+  headerTitle: {
+    fontSize: 24,
+    color: "#fff",
+    fontFamily: fontNames.nunito.regular,
+  },
+  headerIconButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  content: {
+    paddingHorizontal: 16,
+  },
+  sectionTitle: {
     fontSize: 18,
     fontWeight: "600",
     marginBottom: 15,
@@ -203,8 +262,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   categoryButtonText: {
-    fontSize: 14,
-    fontWeight: "500",
+    fontSize: 16,
+    fontFamily: fontNames.openSans.regular,
     color: "#000",
     textAlign: "center",
   },
@@ -254,7 +313,7 @@ const styles = StyleSheet.create({
     color: "#2a59fe",
   },
   seeAllButton: {
-    backgroundColor: "#2a59fe",
+    backgroundColor: "#fe2a2aff",
     padding: 15,
     borderRadius: 8,
     alignItems: "center",
@@ -263,14 +322,14 @@ const styles = StyleSheet.create({
   },
   seeAllButtonText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "bold",
   },
   noProductsText: {
-    textAlign: 'center',
-    width: '100%',
+    textAlign: "center",
+    width: "100%",
     marginTop: 20,
-    color: '#666',
+    color: "#666",
   },
 });
 

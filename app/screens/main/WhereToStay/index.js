@@ -7,68 +7,117 @@ import {
   ScrollView,
   Image,
   TextInput,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import FilterComponent from "../../../components/WhereToStay/FilterComponent";
-import { stays } from "../../../data/StayOptions";
 import Pagination from "./../../../custom/Pagination";
 import { useNavigation } from "@react-navigation/native";
 import { fontNames } from "../../../config/font";
-import Icon from "react-native-vector-icons/FontAwesome";
+import { FontAwesome } from "@expo/vector-icons";
 import RatingStars from "../../../custom/RatingStars";
+import { API_BASE_URL } from "../../../../config";
+import FilterComponent from "../../../custom/AccommodationFilter";
+import { useGetAccommodationsQuery } from "../../../services/accommodationApi";
+import { useGetAverageReviewQuery } from "../../../services/feedback";
 
 const WhereToStay = () => {
   const navigation = useNavigation();
-  const allTags = useMemo(() => {
-    const tags = stays.flatMap((stay) => stay.tags || []);
-    return [...new Set(tags)];
-  }, []);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const { data, isLoading, isError, error, isFetching, refetch } = useGetAccommodationsQuery({
+    page: currentPage,
+    limit: 100,
+  });
+
+  const accommodations = data?.data || [];
 
   const [showFilter, setShowFilter] = useState(false);
   const [filters, setFilters] = useState({
-    subcategory: "", // controlled by StayOptions
-    tags: [], // controlled by FilterComponent
+    subcategory: "",
+    tags: [],
+    priceRange: [0, 10000],
+    rating: 0,
+    address: "",
+    destination: "",
   });
   const [searchQuery, setSearchQuery] = useState("");
+  const [filteredProducts, setFilteredProducts] = useState([]);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-  const [filteredProducts, setFilteredProducts] = useState(stays);
+  // Only show published accommodations
+  const publishedAccommodations = useMemo(() => {
+    return accommodations.filter((acc) => acc.published === true);
+  }, [accommodations]);
 
-  // Update when filters or search query change
+  const transformedStays = useMemo(() => {
+    return publishedAccommodations.map((stay) => ({
+      id: stay.id,
+      slug: stay.slug,
+      title: stay.name,
+      type: stay.category?.name || "Hotel",
+      location: stay.address,
+      price: stay.fromPrice,
+      rating: 0, // Will be updated with actual rating
+      image: stay.images.map((img, idx) => ({
+        id: idx,
+        url: img.startsWith("/api") ? `${API_BASE_URL}${img}` : img,
+      })),
+      tags: stay.amenities.filter((a) => a !== "[]"),
+      description: stay.description,
+      destinations: stay.destinations,
+    }));
+  }, [publishedAccommodations]);
+
   useEffect(() => {
-    let filtered = stays;
+    let filtered = transformedStays;
 
+    // Filter by subcategory
     if (filters.subcategory) {
-      filtered = filtered.filter((item) => item.type === filters.subcategory);
+      filtered = filtered.filter((i) => i.type === filters.subcategory);
     }
 
+    // Filter by tags/amenities
     if (filters.tags.length > 0) {
-      filtered = filtered.filter((item) =>
-        filters.tags.every((tag) => item.tags.includes(tag))
+      filtered = filtered.filter((i) =>
+        filters.tags.every((tag) => i.tags.includes(tag))
       );
     }
 
-    if (filters.priceRange?.length === 2) {
-      const [min, max] = filters.priceRange;
+    // Filter by price range
+    if (filters.priceRange) {
       filtered = filtered.filter(
-        (item) => item.price >= min && item.price <= max
+        (i) =>
+          i.price >= filters.priceRange[0] && i.price <= filters.priceRange[1]
       );
     }
 
-    if (filters.minRating) {
-      filtered = filtered.filter((item) => item.rating >= filters.minRating);
+    // Filter by rating
+    if (filters.rating > 0) {
+      filtered = filtered.filter((i) => i.rating >= filters.rating);
     }
 
-    if (searchQuery) {
-      filtered = filtered.filter((item) =>
-        item.title.toLowerCase().includes(searchQuery.toLowerCase())
+    // Filter by address
+    if (filters.address) {
+      filtered = filtered.filter((i) =>
+        i.location.toLowerCase().includes(filters.address.toLowerCase())
       );
     }
 
-    setFilteredProducts(filtered);
-    setCurrentPage(1);
-  }, [filters, searchQuery]);
+    // Filter by destination
+    if (filters.destination) {
+      filtered = filtered.filter((i) =>
+        i.destinations.some((d) =>
+          d.toLowerCase().includes(filters.destination.toLowerCase())
+        )
+      );
+    }
+
+    setFilteredProducts((prev) => {
+      if (JSON.stringify(prev) !== JSON.stringify(filtered)) return filtered;
+      return prev;
+    });
+  }, [filters, searchQuery, transformedStays]);
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
   const currentItems = filteredProducts.slice(
@@ -76,280 +125,402 @@ const WhereToStay = () => {
     currentPage * itemsPerPage
   );
 
-  const handleFilterApply = () => {
+  const handleApplyFilters = (newFilters) => {
+    setFilters(newFilters);
     setShowFilter(false);
+    setCurrentPage(1);
   };
 
+  const handleResetFilters = () => {
+    setFilters({
+      subcategory: "",
+      tags: [],
+      priceRange: [0, 10000],
+      rating: 0,
+      address: "",
+      destination: "",
+    });
+    setSearchQuery("");
+    setCurrentPage(1);
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#C62828" />
+        <Text style={styles.loadingText}>Loading accommodations...</Text>
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={styles.centerContainer}>
+        <Ionicons name="alert-circle" size={48} color="#C62828" />
+        <Text style={styles.errorText}>Failed to load accommodations</Text>
+        <Text style={styles.errorSubtext}>{error?.message}</Text>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.title}>
-        <View style={styles.leftGroup}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <MaterialIcons name="arrow-back-ios" size={28} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.titleText}>HomeStays</Text>
-        </View>
-        <TouchableOpacity style={styles.iconButton}>
-          <Icon name="bell" size={24} color="#fff" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Search and filter row */}
-      <View style={styles.searchFilterRow}>
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search HomeStays..."
-            placeholderTextColor="#888"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
+    <>
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isFetching}
+            onRefresh={refetch}
+            colors={["#C62828"]}
+            tintColor="#C62828"
           />
-        </View>
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setShowFilter((prev) => !prev)}
-        >
-          <MaterialIcons name="filter-list" size={24} color="#000" />
-        </TouchableOpacity>
-      </View>
-
-      {showFilter && (
-        <FilterComponent
-          allTags={allTags}
-          filters={filters}
-          setFilters={setFilters}
-          handleFilterApply={handleFilterApply}
-          stays={stays}
-        />
-      )}
-
-      <View style={styles.productsGrid}>
-        {currentItems.map((stay) => (
-          <TouchableOpacity
-            key={stay.id}
-            style={styles.productCard}
-            onPress={() => navigation.navigate("StayDetails", { id: stay.id })}
-            activeOpacity={0.8}
-          >
-            <Image
-              source={{ uri: stay.image[0]?.url }}
-              style={styles.productImage}
-              resizeMode="cover"
-            />
-            <View style={styles.productInfoContainer}>
-              <View style={styles.productHeader}>
-                <Text style={styles.productName} numberOfLines={1}>
-                  {stay.title}
-                </Text>
-                <View style={styles.ratingContainer}>
-                  <RatingStars rating={stay.rating} />
-                  <Text style={styles.ratingText}>
-                    {stay.rating?.toFixed(1)}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.locationContainer}>
-                <Ionicons name="location-sharp" size={16} color="#888" />
-                <Text style={styles.productDesc} numberOfLines={1}>
-                  {stay.location}
-                </Text>
-              </View>
-              <View style={styles.priceContainer}>
-                <Text style={styles.productPrice}>Npr {stay.price}</Text>
-                <Text style={styles.perNightText}>/ night</Text>
-              </View>
-            </View>
+        }
+      >
+        {/* HEADER */}
+        <View style={styles.title}>
+          <View style={styles.leftGroup}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <MaterialIcons name="arrow-back-ios" size={28} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.titleText}>HomeStays</Text>
+          </View>
+          <TouchableOpacity style={styles.iconButton}>
+            <FontAwesome name="bell" size={24} color="#fff" />
           </TouchableOpacity>
-        ))}
-      </View>
+        </View>
 
-      {filteredProducts.length > itemsPerPage && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={(page) => setCurrentPage(page)}
-        />
-      )}
+        {/* TOP INFO ROW */}
+        <View style={styles.topInfoRow}>
+          <View style={styles.resultsRow}>
+            <Text style={styles.resultsText}>Showing</Text>
+            <View style={styles.resultsBadge}>
+              <Text style={styles.resultsBadgeText}>
+                {filteredProducts.length}
+              </Text>
+            </View>
+            <Text style={styles.resultsText}>results</Text>
+          </View>
 
-      <View style={styles.tipContainer}>
-        <Ionicons name="information-circle" size={24} color="#841584" />
-        <Text style={styles.tipText}>
-          All listings verified for quality and safety
-        </Text>
+          <TouchableOpacity style={styles.sortButton}>
+            <Text style={styles.sortText}>Newest</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* SEARCH + FILTER */}
+        <View style={styles.searchRow}>
+          <View style={styles.searchBox}>
+            <Ionicons name="search" size={18} color="#888" />
+            <TextInput
+              placeholder="Search accommodations, location"
+              placeholderTextColor="#999"
+              style={styles.searchInput}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+
+          <TouchableOpacity
+            style={styles.filterCircle}
+            onPress={() => setShowFilter(true)}
+          >
+            <Ionicons name="filter" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.productsGrid}>
+          {currentItems.map((stay) => (
+            <AccommodationCard
+              key={stay.id}
+              stay={stay}
+              navigation={navigation}
+            />
+          ))}
+        </View>
+
+        {filteredProducts.length > itemsPerPage && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        )}
+      </ScrollView>
+
+      {/* FILTER MODAL */}
+      <FilterComponent
+        visible={showFilter}
+        onClose={() => setShowFilter(false)}
+        filters={filters}
+        onApplyFilters={handleApplyFilters}
+        onResetFilters={handleResetFilters}
+        accommodations={transformedStays}
+      />
+    </>
+  );
+};
+
+// Separate component for accommodation card to handle reviews
+const AccommodationCard = ({ stay, navigation }) => {
+  const { data: reviewsData } = useGetAverageReviewQuery({
+    type: "accommodation",
+    id: stay.id,
+  });
+
+  const rating = reviewsData?.average ?? 0; // default 0 if undefined
+  const hasReviews = reviewsData?.count > 0;
+
+  return (
+    <View style={styles.productCard}>
+      <Image
+        source={
+          stay.image[0]?.url
+            ? { uri: stay.image[0].url }
+            : require("../../../../assets/Images/Accomodation/hotel-house.jpg")
+        }
+        style={styles.productImage}
+      />
+
+      <View style={styles.productInfoContainer}>
+        <View style={styles.productHeader}>
+          <Text style={styles.productName} numberOfLines={1}>
+            {stay.title}
+          </Text>
+          <View style={styles.ratingContainer}>
+            <RatingStars rating={rating} />
+            <Text style={styles.ratingText}>
+              {hasReviews ? reviewsData.average : "N/A"}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.locationContainer}>
+          <Ionicons name="location-sharp" size={16} color="#888" />
+          <Text style={styles.productDesc} numberOfLines={1}>
+            {stay.location}
+          </Text>
+        </View>
+
+        {/* PRICE + BUTTON */}
+        <View style={styles.priceRow}>
+          <View style={styles.priceContainer}>
+            <Text style={styles.productPrice}>Npr {stay.price}</Text>
+            <Text style={styles.perNightText}>/ night</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.viewDetailsBtn}
+            onPress={() =>
+              navigation.navigate("StayDetails", { slug: stay.slug })
+            }
+          >
+            <Text style={styles.viewDetailsText}>View Details</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1, backgroundColor: "#f9f9f9" },
+
+  centerContainer: {
     flex: 1,
-    backgroundColor: "#f9f9f9",
+    justifyContent: "center",
+    alignItems: "center",
   },
+
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#666",
+  },
+
+  errorText: {
+    marginTop: 10,
+    fontSize: 18,
+    color: "#C62828",
+    fontWeight: "600",
+  },
+
+  errorSubtext: {
+    marginTop: 5,
+    fontSize: 14,
+    color: "#666",
+  },
+
   title: {
-    marginTop: -1,
     backgroundColor: "#C62828",
     padding: 15,
     paddingTop: 40,
-    marginBlock: 10,
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
   },
-  leftGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  backButton: {
-    marginRight: 10,
-    padding: 5,
-  },
-  titleText: {
-    fontSize: 24,
-    color: "#fff",
-    fontFamily: fontNames.nunito.regular,
-    textShadowColor: "rgba(0,0,0,0.3)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
+
+  leftGroup: { flexDirection: "row", alignItems: "center" },
+
+  backButton: { marginRight: 10 },
+
+  titleText: { color: "#fff", fontSize: 24 },
+
   iconButton: {
-    marginLeft: 15,
+    backgroundColor: "rgba(255,255,255,0.2)",
     padding: 8,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.2)",
   },
-  searchFilterRow: {
+
+  topInfoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 8,
+  },
+
+  resultsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+
+  resultsText: {
+    fontSize: 14,
+    color: "#444",
+    fontFamily: fontNames.nunito.regular,
+  },
+
+  resultsBadge: {
+    backgroundColor: "#C62828",
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+
+  resultsBadgeText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  sortButton: {
+    paddingVertical: 4,
+  },
+
+  sortText: {
+    color: "#C62828",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  searchRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
     marginBottom: 16,
-    gap: 3, // spacing between search and filter
+    gap: 10,
   },
-  searchContainer: {
+
+  searchBox: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
-    borderColor: "#ccc",
+    borderRadius: 30,
+    paddingHorizontal: 14,
+    height: 46,
     borderWidth: 1,
-    borderRadius: 8,
-    overflow: "hidden", // clip icon inside border
-    height: 45,
+    borderColor: "#eee",
   },
+
   searchInput: {
     flex: 1,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    fontFamily: fontNames.playfair.regular,
-    width: "78%",
-    height: "100%",
+    marginLeft: 8,
+    fontSize: 15,
+    fontFamily: fontNames.nunito.regular,
   },
-  filterButton: {
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
+
+  filterCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 10,
+    backgroundColor: "#C62828",
     alignItems: "center",
     justifyContent: "center",
+    elevation: 3,
   },
-  productsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    paddingHorizontal: 8,
-  },
+
+  productsGrid: { paddingHorizontal: 8 },
+
   productCard: {
-    width: "100%",
     backgroundColor: "#fff",
     borderRadius: 12,
     marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
     overflow: "hidden",
+    elevation: 3,
   },
-  productImage: {
-    width: "100%",
-    height: 200,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-  },
-  productInfoContainer: {
-    padding: 12,
-  },
+
+  productImage: { width: "100%", height: 200 },
+
+  productInfoContainer: { padding: 12 },
+
   productHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 6,
   },
-  productName: {
-    fontFamily: fontNames.raleway.medium,
-    fontSize: 16,
-    color: "#333",
-    flex: 1,
-    marginRight: 8,
-  },
+
+  productName: { fontSize: 16, flex: 1 },
+
   ratingContainer: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#f5f5f5",
-    borderRadius: 4,
     paddingHorizontal: 6,
-    paddingVertical: 2,
+    borderRadius: 4,
   },
-  ratingText: {
-    marginLeft: 4,
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-  },
+
+  ratingText: { marginLeft: 4 },
+
   locationContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginVertical: 6,
   },
-  productDesc: {
-    fontSize: 14,
-    color: "#666",
-    fontFamily: fontNames.raleway.medium,
-    marginLeft: 4,
-    flex: 1,
-  },
-  priceContainer: {
+
+  productDesc: { marginLeft: 4 },
+
+  priceRow: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-  },
-  productPrice: {
-    fontFamily: fontNames.allura,
-    fontSize: 18,
-    color: "#1e8229ff",
-  },
-  perNightText: {
-    fontSize: 14,
-    color: "#888",
-    marginLeft: 4,
-    marginBottom: 1,
-  },
-  tipContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f0e6ff",
-    padding: 15,
-    borderRadius: 10,
     marginTop: 10,
-    marginBottom: 20,
   },
-  tipText: {
-    marginLeft: 10,
-    fontFamily: fontNames.nunito.regular,
-    fontSize: 14,
-    color: "#333",
+
+  priceContainer: { flexDirection: "row", alignItems: "center" },
+
+  productPrice: {
+    fontSize: 18,
+    color: "#C62828",
+    fontWeight: "700",
+  },
+
+  perNightText: { marginLeft: 4, color: "#888" },
+
+  viewDetailsBtn: {
+    backgroundColor: "#C62828",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+
+  viewDetailsText: {
+    color: "#fff",
+    fontSize: 18,
+    fontFamily: fontNames.nunito.semiBold,
   },
 });
 

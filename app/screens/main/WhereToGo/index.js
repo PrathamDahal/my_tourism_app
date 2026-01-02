@@ -9,22 +9,45 @@ import {
   TouchableWithoutFeedback,
   Platform,
   Dimensions,
-  ImageBackground,
   Image,
+  ActivityIndicator,
 } from "react-native";
-import { destinations } from "../../../data/DestinationCarousel";
 import { useNavigation } from "@react-navigation/native";
-import Icon from "react-native-vector-icons/FontAwesome";
-import { MaterialIcons } from "@expo/vector-icons";
+import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { fontNames } from "../../../config/font";
+import { useGetAllDestinationsQuery } from "../../../services/destinationApi";
+import { API_BASE_URL } from "../../../../config";
 
 const WhereToGo = () => {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
 
+  // ✅ Fetch from API
+  const { data, isLoading, isError, isFetching, refetch } =
+    useGetAllDestinationsQuery();
+
+  if (isLoading)
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#C62828" />
+        <Text>Loading destinations...</Text>
+      </View>
+    );
+
+  if (isError)
+    return (
+      <View style={styles.center}>
+        <Text style={{ color: "red" }}>Failed to load destinations</Text>
+      </View>
+    );
+
+  // ✅ Extract actual destination array
+  const destinations = data?.data || [];
+
+  // ✅ Filter based on search
   const filteredDestinations = destinations.filter((item) =>
-    item.title.toLowerCase().startsWith(searchQuery.toLowerCase())
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleSuggestionSelect = (value) => {
@@ -33,7 +56,6 @@ const WhereToGo = () => {
   };
 
   const renderDestinationCard = ({ item }) => {
-    // Handle undefined description with empty string fallback
     const description = item.description || "";
     const isTablet =
       Platform.isPad ||
@@ -44,22 +66,24 @@ const WhereToGo = () => {
         ? `${description.substring(0, maxChars)}...`
         : description;
 
+    const imageUrl = `${API_BASE_URL}${item.heroImageUrl}`;
+
     return (
       <TouchableOpacity
         style={styles.card}
         onPress={() =>
-          navigation.navigate("DestinationDetails", { destination: item })
+          navigation.navigate("DestinationDetails", { slug: item.slug })
         }
       >
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: item.image[0]?.url || "fallback_image_uri" }}
+            source={{ uri: imageUrl }}
             style={styles.cardImage}
             resizeMode="cover"
           />
           <View style={styles.cardTitleContainer}>
-            <Icon name="map-marker" size={24} color="#fff" />
-            <Text style={styles.cardTitle}>{item.title}</Text>
+            <FontAwesome name="map-marker" size={24} color="#fff" />
+            <Text style={styles.cardTitle}>{item.name}</Text>
           </View>
         </View>
         <Text style={styles.descriptionText} numberOfLines={3}>
@@ -71,6 +95,7 @@ const WhereToGo = () => {
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.title}>
         <View style={styles.leftGroup}>
           <TouchableOpacity
@@ -82,10 +107,11 @@ const WhereToGo = () => {
           <Text style={styles.titleText}>Destinations</Text>
         </View>
         <TouchableOpacity style={styles.iconButton}>
-          <Icon name="bell" size={24} color="#fff" />
+          <FontAwesome name="bell" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
 
+      {/* Search Bar */}
       <View style={styles.searchContainer}>
         <TextInput
           placeholder="Search destinations..."
@@ -98,25 +124,23 @@ const WhereToGo = () => {
         />
         <TouchableOpacity
           style={styles.searchIcon}
-          onPress={(text) => {
-            setSearchQuery(text);
-            setShowSuggestions(true);
-          }}
+          onPress={() => setShowSuggestions(true)}
         >
-          <Icon name="search" size={20} color="#fff" />
+          <FontAwesome name="search" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
 
+      {/* Suggestions */}
       {showSuggestions && searchQuery.length > 0 && (
         <View style={styles.suggestionsContainer}>
           {filteredDestinations.length > 0 ? (
             filteredDestinations.slice(0, 5).map((item) => (
               <TouchableWithoutFeedback
                 key={item.id}
-                onPress={() => handleSuggestionSelect(item.title)}
+                onPress={() => handleSuggestionSelect(item.name)}
               >
                 <View style={styles.suggestionItem}>
-                  <Text>{item.title}</Text>
+                  <Text>{item.name}</Text>
                 </View>
               </TouchableWithoutFeedback>
             ))
@@ -128,19 +152,25 @@ const WhereToGo = () => {
         </View>
       )}
 
+      {/* Destination List */}
       <FlatList
         data={filteredDestinations}
         renderItem={renderDestinationCard}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContainer}
+        refreshing={isFetching}
+        onRefresh={refetch}
       />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1 },
+  center: {
     flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: {
     marginTop: -1,
@@ -152,21 +182,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  leftGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  backButton: {
-    marginRight: 10,
-    padding: 5,
-  },
+  leftGroup: { flexDirection: "row", alignItems: "center" },
+  backButton: { marginRight: 10, padding: 5 },
   titleText: {
     fontSize: 24,
     color: "#fff",
     fontFamily: fontNames.nunito.regular,
-    textShadowColor: "rgba(0,0,0,0.3)",
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
   },
   iconButton: {
     marginLeft: 15,
@@ -214,30 +235,22 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },
-  listContainer: {
-    paddingBottom: 20,
-  },
+  listContainer: { paddingBottom: 20 },
   card: {
-    position: "relative",
     backgroundColor: "white",
     borderRadius: 10,
     overflow: "hidden",
     marginHorizontal: 22,
     marginBottom: 20,
-    height: 300, // Fixed height or adjust as needed
+    height: 300,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 5,
     elevation: 5,
   },
-  imageContainer: {
-    position: "relative",
-  },
-  cardImage: {
-    height: "85%",
-    padding: 12,
-  },
+  imageContainer: { position: "relative" },
+  cardImage: { height: "85%", width: "100%" },
   cardTitleContainer: {
     position: "absolute",
     flexDirection: "row",
@@ -252,7 +265,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontFamily: fontNames.openSans.semibold,
-    color: "#ffffffff",
+    color: "#fff",
     marginLeft: 8,
   },
   descriptionText: {
@@ -261,18 +274,6 @@ const styles = StyleSheet.create({
     bottom: 2,
     fontSize: 14,
     color: "#555",
-  },
-  cardButton: {
-    backgroundColor: "#C62828",
-    padding: 8,
-    borderRadius: 6,
-    alignSelf: "flex-start",
-    marginTop: 8,
-  },
-  cardButtonText: {
-    color: "white",
-    fontWeight: "600",
-    fontSize: 14,
   },
 });
 

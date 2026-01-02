@@ -95,7 +95,7 @@ const ProductDetails = () => {
   const renderThumbnail = ({ item, index }) => (
     <TouchableOpacity onPress={() => setSelectedImageIndex(index)}>
       <Image
-        source={{ uri: `${API_BASE_URL}/${item}` }}
+        source={{ uri: `${API_BASE_URL}${item}` }}
         style={[
           styles.thumbnail,
           index === selectedImageIndex && styles.selectedThumbnail,

@@ -1,5 +1,5 @@
 import { TouchableOpacity, Text, StyleSheet } from "react-native";
-import Icon from "react-native-vector-icons/FontAwesome";
+import { FontAwesome } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
 
@@ -15,7 +15,7 @@ const LogoutButton = ({ setDropdownOpen }) => {
 
   return (
     <TouchableOpacity style={styles.button} onPress={handleLogout}>
-      <Icon name="sign-out" size={18} color="#fff" style={styles.icon} />
+      <FontAwesome name="sign-out" size={18} color="#fff" style={styles.icon} />
       <Text style={styles.text}>Logout</Text>
     </TouchableOpacity>
   );
