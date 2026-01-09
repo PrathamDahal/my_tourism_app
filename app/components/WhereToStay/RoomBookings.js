@@ -7,11 +7,13 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { API_BASE_URL } from "../../../config";
 import { useGetRoomsQuery } from "../../services/accommodationRoomApi";
+import { useCreateRoomBookingMutation } from "../../services/accommodationBookingApi";
 
 export default function RoomBookings() {
   const navigation = useNavigation();
@@ -21,7 +23,14 @@ export default function RoomBookings() {
   const { data, isLoading, isError } = useGetRoomsQuery(slug);
   const rooms = data?.data ?? [];
 
+  const [createRoomBooking, { isLoading: isBooking }] =
+    useCreateRoomBookingMutation();
+
   const [quantities, setQuantities] = useState({});
+  const [checkIn, setCheckIn] = useState(null);
+  const [checkOut, setCheckOut] = useState(null);
+  const [numberOfGuests, setNumberOfGuests] = useState(1);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const updateQty = (id, type, available) => {
     setQuantities((prev) => {
@@ -31,6 +40,216 @@ export default function RoomBookings() {
       if (type === "dec" && current > 0) return { ...prev, [id]: current - 1 };
       return prev;
     });
+  };
+
+  // Get selected rooms
+  const selectedRooms = rooms
+    .filter((room) => quantities[room.id] > 0)
+    .map((room) => ({
+      ...room,
+      quantity: quantities[room.id],
+    }));
+
+  // Calculate totals
+  const calculateTotals = () => {
+    if (!checkIn || !checkOut) {
+      return {
+        nights: 0,
+        roomTotal: 0,
+        cleaningFee: 0,
+        serviceFee: 0,
+        tax: 0,
+        total: 0,
+      };
+    }
+
+    const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+
+    if (nights <= 0) {
+      return {
+        nights: 0,
+        roomTotal: 0,
+        cleaningFee: 0,
+        serviceFee: 0,
+        tax: 0,
+        total: 0,
+      };
+    }
+
+    const roomTotal = selectedRooms.reduce(
+      (sum, room) => sum + room.basePrice * room.quantity * nights,
+      0
+    );
+
+    const cleaningFee = 500;
+    const serviceFee = roomTotal * 0.1;
+    const tax = roomTotal * 0.13;
+    const total = roomTotal + cleaningFee + serviceFee + tax;
+
+    return { nights, roomTotal, cleaningFee, serviceFee, tax, total };
+  };
+
+  const totals = calculateTotals();
+
+  // Calculate max guests
+  const maxGuests = selectedRooms.reduce(
+    (sum, room) => sum + room.maxGuests * room.quantity,
+    0
+  );
+
+  // Calendar functions
+  const getDaysInMonth = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+
+    return { daysInMonth, startingDayOfWeek };
+  };
+
+  const isPastOrToday = (day) => {
+    if (!day) return true;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const date = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth(),
+      day
+    );
+    date.setHours(0, 0, 0, 0);
+
+    return date <= today; // today + past
+  };
+
+  const handleDatePress = (day) => {
+    if (isPastOrToday(day)) return; // ⛔ block past & today
+
+    const selectedDate = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth(),
+      day
+    );
+
+    if (!checkIn || (checkIn && checkOut)) {
+      setCheckIn(selectedDate);
+      setCheckOut(null);
+    } else if (checkIn && !checkOut) {
+      if (selectedDate > checkIn) {
+        setCheckOut(selectedDate);
+      } else {
+        setCheckOut(checkIn);
+        setCheckIn(selectedDate);
+      }
+    }
+  };
+
+  const isDateInRange = (day) => {
+    if (!checkIn || !day) return false;
+    const date = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth(),
+      day
+    );
+    if (checkOut) {
+      return date >= checkIn && date <= checkOut;
+    }
+    return date.getTime() === checkIn.getTime();
+  };
+
+  const isDateCheckIn = (day) => {
+    if (!checkIn || !day) return false;
+    const date = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth(),
+      day
+    );
+    return date.getTime() === checkIn.getTime();
+  };
+
+  const isDateCheckOut = (day) => {
+    if (!checkOut || !day) return false;
+    const date = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth(),
+      day
+    );
+    return date.getTime() === checkOut.getTime();
+  };
+
+  const changeMonth = (direction) => {
+    setCurrentMonth(
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth() + direction)
+    );
+  };
+
+  const formatDate = (date) => {
+    if (!date) return "";
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  const handleConfirmBooking = async () => {
+    if (!checkIn || !checkOut) {
+      Alert.alert("Error", "Please select check-in and check-out dates");
+      return;
+    }
+
+    if (selectedRooms.length === 0) {
+      Alert.alert("Error", "Please select at least one room");
+      return;
+    }
+
+    try {
+      // Make booking for each selected room
+      for (const room of selectedRooms) {
+        const bookingData = {
+          accommodationId: room.accommodationId || slug,
+          roomId: room.id,
+          checkIn: checkIn.toISOString().split("T")[0],
+          checkOut: checkOut.toISOString().split("T")[0],
+          qty: room.quantity,
+          guests: numberOfGuests,
+        };
+
+        await createRoomBooking(bookingData).unwrap();
+      }
+
+      Alert.alert("Success", "Booking confirmed successfully!", [
+        {
+          text: "OK",
+          onPress: () => navigation.goBack(),
+        },
+      ]);
+    } catch (error) {
+      // Check if it's an unauthorized error (401)
+      if (error?.status === 401 || error?.originalStatus === 401) {
+        Alert.alert(
+          "Authentication Required",
+          "You need to log in for further processes",
+          [
+            {
+              text: "Cancel",
+              style: "cancel",
+            },
+            {
+              text: "Login",
+              onPress: () => navigation.navigate("Auth", { screen: "Login" }),
+            },
+          ]
+        );
+        return;
+      }
+
+      // Handle other errors
+      const message = Array.isArray(error?.data?.message)
+        ? error.data.message.join("\n")
+        : error?.data?.message || "Failed to create booking";
+
+      Alert.alert("Error", message);
+    }
   };
 
   /* ---------- LOADING / ERROR ---------- */
@@ -49,6 +268,12 @@ export default function RoomBookings() {
       </View>
     );
   }
+
+  const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth);
+  const monthName = currentMonth.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
 
   return (
     <View style={styles.container}>
@@ -69,16 +294,36 @@ export default function RoomBookings() {
       </View>
 
       <ScrollView>
-        {/* STEP */}
-        <View style={styles.stepRow}>
-          <Text style={styles.stepBadge}>1</Text>
-          <Text style={styles.stepText}>Select Rooms</Text>
+        {/* STEP 1: ROOMS SELECTED */}
+        <View style={styles.stepCard}>
+          <View style={styles.stepHeader}>
+            <View style={styles.stepBadge}>
+              <Text style={styles.stepBadgeText}>1</Text>
+            </View>
+            <Text style={styles.stepTitle}>Rooms Selected</Text>
+          </View>
+          <View style={styles.roomsSelectedInfo}>
+            <Text style={styles.roomsCount}>
+              {selectedRooms.length} room{selectedRooms.length !== 1 ? "s" : ""}
+            </Text>
+            <Text style={styles.pricePerNight}>
+              Per Night{"\n"}
+              <Text style={styles.priceAmount}>
+                NPR{" "}
+                {selectedRooms
+                  .reduce(
+                    (sum, room) => sum + room.basePrice * room.quantity,
+                    0
+                  )
+                  .toLocaleString()}
+              </Text>
+            </Text>
+          </View>
         </View>
 
-        {/* ROOMS */}
+        {/* AVAILABLE ROOMS */}
         {rooms.map((room) => (
           <View key={room.id} style={styles.card}>
-            {/* IMAGE */}
             <View style={styles.imageWrapper}>
               <Image
                 source={{
@@ -96,7 +341,10 @@ export default function RoomBookings() {
                 <View style={styles.iconRow}>
                   <View style={styles.iconItem}>
                     <Ionicons name="people" size={14} color="#fff" />
-                    <Text style={styles.iconText}>{room.capacity}</Text>
+                    <Text style={styles.iconText}>
+                      {room.capacity}{" "}
+                      {room.maxGuests ? `(max ${room.maxGuests})` : ""}
+                    </Text>
                   </View>
                   <View style={styles.iconItem}>
                     <Ionicons name="bed" size={14} color="#fff" />
@@ -110,7 +358,6 @@ export default function RoomBookings() {
               </View>
             </View>
 
-            {/* INFO */}
             <View style={styles.info}>
               <Text style={styles.price}>
                 NPR {Number(room.basePrice).toFixed(0)}
@@ -132,7 +379,6 @@ export default function RoomBookings() {
                 )}
               </View>
 
-              {/* QUANTITY */}
               <View style={styles.qtyRow}>
                 <Text style={styles.qtyLabel}>Quantity</Text>
 
@@ -159,6 +405,225 @@ export default function RoomBookings() {
             </View>
           </View>
         ))}
+
+        {/* STEP 2: SELECT DATES */}
+        {selectedRooms.length > 0 && (
+          <>
+            <View style={styles.stepCard}>
+              <View style={styles.stepHeader}>
+                <View style={styles.stepBadge}>
+                  <Text style={styles.stepBadgeText}>2</Text>
+                </View>
+                <Text style={styles.stepTitle}>Select Dates</Text>
+              </View>
+            </View>
+
+            {/* Calendar */}
+            <View style={styles.calendarCard}>
+              <View style={styles.calendarHeader}>
+                <TouchableOpacity onPress={() => changeMonth(-1)}>
+                  <Ionicons name="chevron-back" size={24} color="#333" />
+                </TouchableOpacity>
+                <Text style={styles.monthText}>{monthName}</Text>
+                <TouchableOpacity onPress={() => changeMonth(1)}>
+                  <Ionicons name="chevron-forward" size={24} color="#333" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.weekDays}>
+                {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+                  <Text key={day} style={styles.weekDayText}>
+                    {day}
+                  </Text>
+                ))}
+              </View>
+
+              <View style={styles.daysGrid}>
+                {Array.from({ length: startingDayOfWeek }).map((_, i) => (
+                  <View key={`empty-${i}`} style={styles.dayCell} />
+                ))}
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                  const day = i + 1;
+                  const disabled = isPastOrToday(day);
+                  const inRange = isDateInRange(day);
+                  const isCheckInDate = isDateCheckIn(day);
+                  const isCheckOutDate = isDateCheckOut(day);
+
+                  return (
+                    <TouchableOpacity
+                      key={day}
+                      disabled={disabled}
+                      style={[
+                        styles.dayCell,
+                        disabled && styles.dayCellDisabled,
+                        inRange && styles.dayCellInRange,
+                        (isCheckInDate || isCheckOutDate) &&
+                          styles.dayCellSelected,
+                      ]}
+                      onPress={() => handleDatePress(day)}
+                    >
+                      <Text
+                        style={[
+                          styles.dayText,
+                          disabled && styles.dayTextDisabled,
+                          (isCheckInDate || isCheckOutDate) &&
+                            styles.dayTextSelected,
+                        ]}
+                      >
+                        {day}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Date Display */}
+              <View style={styles.dateDisplay}>
+                <View style={styles.dateBox}>
+                  <Ionicons name="calendar" size={16} color="#10B981" />
+                  <Text style={styles.dateLabel}>Check-in</Text>
+                  <Text style={styles.dateValue}>
+                    {checkIn ? formatDate(checkIn) : "Select"}
+                  </Text>
+                </View>
+                <View style={styles.dateBox}>
+                  <Ionicons name="calendar" size={16} color="#EF4444" />
+                  <Text style={styles.dateLabel}>Check-out</Text>
+                  <Text style={styles.dateValue}>
+                    {checkOut ? formatDate(checkOut) : "Select"}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* STEP 3: GUESTS */}
+            <View style={styles.stepCard}>
+              <View style={styles.stepHeader}>
+                <View style={styles.stepBadge}>
+                  <Text style={styles.stepBadgeText}>3</Text>
+                </View>
+                <Text style={styles.stepTitle}>Guests</Text>
+              </View>
+            </View>
+
+            <View style={styles.guestsCard}>
+              <View style={styles.guestsRow}>
+                <View style={styles.guestsIcon}>
+                  <Ionicons name="people" size={24} color="#E53935" />
+                </View>
+                <View style={styles.guestsInfo}>
+                  <Text style={styles.guestsLabel}>Total Guests</Text>
+                  <Text style={styles.guestsMax}>Max {maxGuests} people</Text>
+                </View>
+                <View style={styles.guestsControls}>
+                  <TouchableOpacity
+                    style={styles.guestsBtn}
+                    onPress={() =>
+                      setNumberOfGuests(Math.max(1, numberOfGuests - 1))
+                    }
+                  >
+                    <Text style={styles.guestsBtnText}>−</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.guestsValue}>{numberOfGuests}</Text>
+                  <TouchableOpacity
+                    style={styles.guestsBtnActive}
+                    onPress={() =>
+                      setNumberOfGuests(Math.min(maxGuests, numberOfGuests + 1))
+                    }
+                  >
+                    <Text style={styles.guestsBtnTextActive}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            {/* STEP 4: PRICING */}
+            <View style={styles.stepCard}>
+              <View style={styles.stepHeader}>
+                <View style={styles.stepBadge}>
+                  <Text style={styles.stepBadgeText}>4</Text>
+                </View>
+                <Text style={styles.stepTitle}>Pricing</Text>
+                {totals.nights > 0 && (
+                  <Text style={styles.nightsTag}>{totals.nights} nights</Text>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.pricingCard}>
+              {totals.nights > 0 ? (
+                <>
+                  <View style={styles.pricingRow}>
+                    <Text style={styles.pricingLabel}>Room Charges</Text>
+                    <Text style={styles.pricingValue}>
+                      NPR {totals.roomTotal.toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={styles.pricingRow}>
+                    <Text style={styles.pricingLabel}>Cleaning Fee</Text>
+                    <Text style={styles.pricingValue}>
+                      NPR {totals.cleaningFee.toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={styles.pricingRow}>
+                    <Text style={styles.pricingLabel}>Service Fee (10%)</Text>
+                    <Text style={styles.pricingValue}>
+                      NPR {totals.serviceFee.toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={styles.pricingRow}>
+                    <Text style={styles.pricingLabel}>Tax (13%)</Text>
+                    <Text style={styles.pricingValue}>
+                      NPR {totals.tax.toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={styles.divider} />
+                  <View style={styles.pricingRow}>
+                    <Text style={styles.totalLabel}>Grand Total</Text>
+                    <Text style={styles.totalValue}>
+                      NPR {totals.total.toFixed(2)}
+                    </Text>
+                  </View>
+                </>
+              ) : (
+                <Text style={styles.emptyText}>
+                  Select dates to see pricing
+                </Text>
+              )}
+            </View>
+
+            {/* Warning */}
+            <View style={styles.warningCard}>
+              <Ionicons name="warning" size={20} color="#F59E0B" />
+              <Text style={styles.warningText}>
+                No cancellations can be made once booking is confirmed. Please
+                review your selection carefully.
+              </Text>
+            </View>
+
+            {/* Confirm Button */}
+            <TouchableOpacity
+              style={[
+                styles.confirmBtn,
+                (!checkIn ||
+                  !checkOut ||
+                  isBooking ||
+                  selectedRooms.length === 0) &&
+                  styles.confirmBtnDisabled,
+              ]}
+              onPress={handleConfirmBooking}
+              disabled={
+                !checkIn || !checkOut || isBooking || selectedRooms.length === 0
+              }
+            >
+              <Text style={styles.confirmBtnText}>
+                {isBooking ? "Processing..." : "Confirm Booking"}
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
@@ -186,26 +651,62 @@ const styles = StyleSheet.create({
   headerTitle: { color: "#fff", fontSize: 16, fontWeight: "600" },
   headerSubtitle: { color: "#fff", fontSize: 12, opacity: 0.9 },
 
-  stepRow: {
+  stepCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+  },
+  stepHeader: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    gap: 10,
+    gap: 12,
   },
   stepBadge: {
     backgroundColor: "#E53935",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepBadgeText: {
     color: "#fff",
-    paddingHorizontal: 10,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  stepTitle: { fontSize: 18, fontWeight: "600", flex: 1 },
+  nightsTag: {
+    backgroundColor: "#DBEAFE",
+    color: "#1E40AF",
+    paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: 16,
+    fontSize: 12,
     fontWeight: "600",
   },
-  stepText: { fontSize: 16, fontWeight: "600" },
+
+  roomsSelectedInfo: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+  },
+  roomsCount: { fontSize: 14, color: "#666" },
+  pricePerNight: { fontSize: 12, color: "#666", textAlign: "right" },
+  priceAmount: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#E53935",
+  },
 
   card: {
     backgroundColor: "#fff",
     marginHorizontal: 16,
-    marginBottom: 16,
+    marginTop: 16,
     borderRadius: 12,
     overflow: "hidden",
   },
@@ -232,13 +733,14 @@ const styles = StyleSheet.create({
   perNight: { fontSize: 12, color: "#777" },
   available: { fontSize: 12, color: "#999", marginVertical: 4 },
 
-  amenities: { flexDirection: "row", marginVertical: 6 },
+  amenities: { flexDirection: "row", marginVertical: 6, flexWrap: "wrap" },
   amenity: {
     backgroundColor: "#f1f1f1",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
     marginRight: 6,
+    marginBottom: 6,
   },
   amenityText: { fontSize: 12 },
   moreAmenity: { fontSize: 12, color: "#777" },
@@ -271,4 +773,232 @@ const styles = StyleSheet.create({
   qtyBtnText: { fontSize: 18 },
   qtyBtnTextActive: { fontSize: 18, color: "#fff" },
   qtyValue: { marginHorizontal: 12, fontSize: 16 },
+
+  // Calendar Styles
+  calendarCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+  },
+  calendarHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  monthText: { fontSize: 16, fontWeight: "600" },
+  weekDays: {
+    flexDirection: "row",
+    marginBottom: 8,
+  },
+  weekDayText: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 12,
+    color: "#666",
+    fontWeight: "600",
+  },
+  daysGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  dayCell: {
+    width: "14.28%",
+    aspectRatio: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 4,
+  },
+  dayCellDisabled: {
+    backgroundColor: "#F3F4F6",
+  },
+
+  dayTextDisabled: {
+    color: "#9CA3AF",
+  },
+
+  dayCellInRange: {
+    backgroundColor: "#FFEBEE",
+  },
+  dayCellSelected: {
+    backgroundColor: "#E53935",
+    borderRadius: 20,
+  },
+  dayText: {
+    fontSize: 14,
+    color: "#333",
+  },
+  dayTextSelected: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  dateDisplay: {
+    flexDirection: "row",
+    marginTop: 16,
+    gap: 12,
+  },
+  dateBox: {
+    flex: 1,
+    backgroundColor: "#F9FAFB",
+    padding: 12,
+    borderRadius: 8,
+    gap: 4,
+  },
+  dateLabel: {
+    fontSize: 11,
+    color: "#666",
+  },
+  dateValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+  },
+
+  // Guests Styles
+  guestsCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+  },
+  guestsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  guestsIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#FFEBEE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  guestsInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  guestsLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+  },
+  guestsMax: {
+    fontSize: 12,
+    color: "#666",
+  },
+  guestsControls: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  guestsBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  guestsBtnActive: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#E53935",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  guestsBtnText: {
+    fontSize: 20,
+    color: "#666",
+  },
+  guestsBtnTextActive: {
+    fontSize: 20,
+    color: "#fff",
+  },
+  guestsValue: {
+    marginHorizontal: 16,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  // Pricing Styles
+  pricingCard: {
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+  },
+  pricingRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  pricingLabel: {
+    fontSize: 14,
+    color: "#666",
+  },
+  pricingValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#E5E7EB",
+    marginVertical: 8,
+  },
+  totalLabel: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#333",
+  },
+  totalValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#E53935",
+  },
+  emptyText: {
+    textAlign: "center",
+    color: "#999",
+    paddingVertical: 16,
+  },
+
+  // Warning Card
+  warningCard: {
+    backgroundColor: "#FFFBEB",
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+    flexDirection: "row",
+    gap: 12,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#92400E",
+    lineHeight: 18,
+  },
+
+  // Confirm Button
+  confirmBtn: {
+    backgroundColor: "#E53935",
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  confirmBtnDisabled: {
+    backgroundColor: "#D1D5DB",
+  },
+  confirmBtnText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
 });

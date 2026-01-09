@@ -17,6 +17,7 @@ import { FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { fontNames } from "../../../config/font";
 import { useGetAllDestinationsQuery } from "../../../services/destinationApi";
 import { API_BASE_URL } from "../../../../config";
+import CustomBottomTab from "../../../custom/BottomTabComponent";
 
 const WhereToGo = () => {
   const navigation = useNavigation();
@@ -161,6 +162,8 @@ const WhereToGo = () => {
         refreshing={isFetching}
         onRefresh={refetch}
       />
+
+      <CustomBottomTab />
     </View>
   );
 };

@@ -15,7 +15,90 @@ import { useNavigation } from "@react-navigation/native";
 import { fontNames } from "../../../config/font";
 import RatingStars from "../../../custom/RatingStars";
 import { useGetTravelPackagesQuery } from "../../../services/travelPackagesApi";
+import { useGetAverageReviewQuery } from "../../../services/feedback";
 import { API_BASE_URL } from "../../../../config";
+import CustomBottomTab from "../../../custom/BottomTabComponent";
+
+const PackageCard = ({ item, navigation }) => {
+  const { data: reviewsData } = useGetAverageReviewQuery({
+    type: "package",
+    id: item.id,
+  });
+
+  const rating = reviewsData?.average ?? 0;
+  const hasReviews = reviewsData?.count > 0;
+
+  // Safely get the first image string
+  const firstImage = item?.images?.[0];
+
+  // Construct full URL
+  const imageSource = firstImage
+    ? { uri: `${API_BASE_URL}${firstImage}` } // remote
+    : require("../../../../assets/Images/Travel/travel-default.jpg"); // local
+
+  return (
+    <View style={styles.card}>
+      {imageSource ? (
+        <Image source={imageSource} style={styles.image} />
+      ) : (
+        <View
+          style={[
+            styles.image,
+            {
+              backgroundColor: "#ccc",
+              justifyContent: "center",
+              alignItems: "center",
+            },
+          ]}
+        >
+          <Text>No Image</Text>
+        </View>
+      )}
+
+      <View style={styles.durationBadge}>
+        <Ionicons name="time-outline" size={14} color="#000" />
+        <Text style={styles.durationText}>
+          {item?.durationDays ?? 0} Days / {item?.durationNights ?? 0} Nights
+        </Text>
+      </View>
+
+      <View style={styles.cardContent}>
+        {/* Title and Rating Row */}
+        <View style={styles.titleRatingRow}>
+          <Text style={styles.cardTitle} numberOfLines={1}>
+            {item?.name ?? "No Title"}
+          </Text>
+          <View style={styles.ratingContainer}>
+            <RatingStars rating={rating} />
+            <Text style={styles.ratingText}>
+              {hasReviews ? reviewsData.average.toFixed(1) : "N/A"}
+            </Text>
+          </View>
+        </View>
+
+        <Text style={styles.location}>
+          {item?.destinations?.[0]?.name ?? "Unknown Location"}
+        </Text>
+
+        {/* Price and Button Row */}
+        <View style={styles.priceButtonRow}>
+          <View style={styles.priceRow}>
+            <Text style={styles.price}>Npr {item?.price ?? 0}</Text>
+            <Text style={styles.person}>/person</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.viewDetailsButton}
+            onPress={() =>
+              navigation.navigate("TravelPackageDetails", { packageData: item })
+            }
+          >
+            <Text style={styles.viewDetailsText}>View Details</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+};
 
 const TravelPackagesScreen = () => {
   const [search, setSearch] = useState("");
@@ -62,61 +145,9 @@ const TravelPackagesScreen = () => {
     item.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const renderPackage = ({ item }) => {
-    // Safely get the first image string
-    const firstImage = item?.images?.[0];
-
-    // Construct full URL
-    const imageUrl = firstImage ? `${API_BASE_URL}${firstImage}` : null;
-
-    return (
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() =>
-          navigation.navigate("TravelPackageDetails", { packageData: item })
-        }
-      >
-        {imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={styles.image} />
-        ) : (
-          <View
-            style={[
-              styles.image,
-              {
-                backgroundColor: "#ccc",
-                justifyContent: "center",
-                alignItems: "center",
-              },
-            ]}
-          >
-            <Text>No Image</Text>
-          </View>
-        )}
-
-        <View style={styles.durationBadge}>
-          <Ionicons name="time-outline" size={14} color="#000" />
-          <Text style={styles.durationText}>
-            {item?.durationDays ?? 0} Days / {item?.durationNights ?? 0} Nights
-          </Text>
-        </View>
-
-        <View style={styles.cardContent}>
-          <Text style={styles.cardTitle}>{item?.name ?? "No Title"}</Text>
-          <Text style={styles.location}>
-            {item?.destinations?.[0]?.name ?? "Unknown Location"}
-          </Text>
-          <View style={styles.priceRow}>
-            <Text style={styles.price}>Npr {item?.price ?? 0}</Text>
-            <Text style={styles.person}>/person</Text>
-          </View>
-          <View style={styles.rating}>
-            <RatingStars rating={item?.rating ?? 0} />
-            <Text style={styles.ratingText}>{item?.rating ?? 0}</Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const renderPackage = ({ item }) => (
+    <PackageCard item={item} navigation={navigation} />
+  );
 
   return (
     <View style={styles.container}>
@@ -168,6 +199,8 @@ const TravelPackagesScreen = () => {
           </View>
         }
       />
+      
+      <CustomBottomTab />
     </View>
   );
 };
@@ -240,26 +273,53 @@ const styles = StyleSheet.create({
   },
   durationText: { fontSize: 12, marginLeft: 4 },
   cardContent: { padding: 10 },
+  titleRatingRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
   cardTitle: {
     fontFamily: fontNames.openSans.semibold,
     fontSize: 16,
-    marginBottom: 2,
+    flex: 1,
+    marginRight: 8,
   },
-  location: { fontSize: 13, color: "#666", marginBottom: 6 },
-  priceRow: { flexDirection: "row", alignItems: "center" },
-  price: { color: "green", fontSize: 14, fontWeight: "bold" },
-  person: { fontSize: 12, color: "#444" },
-  rating: {
-    position: "absolute",
-    bottom: 10,
-    right: 10,
+  ratingContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    backgroundColor: "#f5f5f5",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 12,
-    elevation: 1,
   },
-  ratingText: { marginLeft: 4, fontSize: 13, fontWeight: "bold" },
+  ratingText: {
+    marginLeft: 4,
+    fontSize: 13,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  location: { fontSize: 13, color: "#666", marginBottom: 8 },
+  priceButtonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  price: { color: "green", fontSize: 14, fontWeight: "bold" },
+  person: { fontSize: 12, color: "#444" },
+  viewDetailsButton: {
+    backgroundColor: "#C62828",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+  },
+  viewDetailsText: {
+    color: "#fff",
+    fontSize: 18,
+    fontFamily: fontNames.nunito.semiBold,
+  },
 });

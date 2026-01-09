@@ -20,16 +20,18 @@ import { API_BASE_URL } from "../../../../config";
 import FilterComponent from "../../../custom/AccommodationFilter";
 import { useGetAccommodationsQuery } from "../../../services/accommodationApi";
 import { useGetAverageReviewQuery } from "../../../services/feedback";
+import CustomBottomTab from "../../../custom/BottomTabComponent";
 
 const WhereToStay = () => {
   const navigation = useNavigation();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const { data, isLoading, isError, error, isFetching, refetch } = useGetAccommodationsQuery({
-    page: currentPage,
-    limit: 100,
-  });
+  const { data, isLoading, isError, error, isFetching, refetch } =
+    useGetAccommodationsQuery({
+      page: currentPage,
+      limit: 100,
+    });
 
   const accommodations = data?.data || [];
 
@@ -259,6 +261,7 @@ const WhereToStay = () => {
         onResetFilters={handleResetFilters}
         accommodations={transformedStays}
       />
+      <CustomBottomTab />
     </>
   );
 };

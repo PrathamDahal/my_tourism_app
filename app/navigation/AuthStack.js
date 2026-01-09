@@ -5,6 +5,7 @@ import Dashboard from "../screens/protected/Dashboard/Dashboard";
 import LoginScreen from "../screens/auth/LoginScreen";
 import MyCart from "./../screens/protected/MyCart";
 import ProtectedRoute from "./ProtectedRoute";
+import MyBookings from "../screens/protected/MyBookings";
 
 const Stack = createNativeStackNavigator();
 
@@ -34,6 +35,14 @@ const AuthStack = () => {
         component={() => (
           <ProtectedRoute>
             <MyCart />
+          </ProtectedRoute>
+        )}
+      />
+      <Stack.Screen
+        name="MyBookings"
+        component={() => (
+          <ProtectedRoute>
+            <MyBookings />
           </ProtectedRoute>
         )}
       />

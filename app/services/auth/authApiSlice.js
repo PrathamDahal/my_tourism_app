@@ -27,7 +27,13 @@ export const authApiSlice = createApi({
         }
       },
     }),
+    checkEmail: builder.query({
+      query: (email) => ({
+        url: `/Auth/check-email?email=${encodeURIComponent(email)}`,
+        method: "GET",
+      }),
+    }),
   }),
 });
 
-export const { useLoginMutation } = authApiSlice;
+export const { useLoginMutation, useLazyCheckEmailQuery } = authApiSlice;

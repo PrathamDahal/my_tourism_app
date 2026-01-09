@@ -1,34 +1,38 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { categoryApi } from '../services/categoryApi';
-import { productApi } from '../services/productApi';
-import { cartApi } from '../services/cartApi';
-import { authApiSlice } from './../services/auth/authApiSlice';
-import { registerApiSlice } from '../services/registerApi';
-import { userApi } from '../services/userApi';
-import { feedbackApi } from '../services/feedback';
-import { travelPackageApi } from '../services/travelPackagesApi';
-import { locationApi } from '../services/locationApiSlice'; 
-import { privacyApi } from '../services/auth/privacyapiSlice';
-import { destinationApi } from '../services/destinationApi';
-import { travelDeparturesApi } from '../services/travelDeparturesApi';
-import { accommodationApi } from '../services/accommodationApi';
-import { accommodationBookingApi } from '../services/accommodationBookingApi';
-import { roomsApi } from '../services/accommodationRoomApi';
+import { configureStore } from "@reduxjs/toolkit";
+import { categoryApi } from "../services/categoryApi";
+import { productApi } from "../services/productApi";
+import { cartApi } from "../services/cartApi";
+import { authApiSlice } from "./../services/auth/authApiSlice";
+import { registerApiSlice } from "../services/registerApi";
+import { userApi } from "../services/userApi";
+import { feedbackApi } from "../services/feedback";
+import { travelPackageApi } from "../services/travelPackagesApi";
+import { locationApi } from "../services/locationApiSlice";
+import { privacyApi } from "../services/auth/privacyapiSlice";
+import { destinationApi } from "../services/destinationApi";
+import { travelDeparturesApi } from "../services/travelDeparturesApi";
+import { accommodationApi } from "../services/accommodationApi";
+import { accommodationBookingApi } from "../services/accommodationBookingApi";
+import { roomsApi } from "../services/accommodationRoomApi";
+import { productOrderApi } from "../services/productOrder";
+import { packageBookingApi } from "../services/travelPackagesBooking";
 
 export const store = configureStore({
   reducer: {
     [categoryApi.reducerPath]: categoryApi.reducer,
     [productApi.reducerPath]: productApi.reducer,
     [cartApi.reducerPath]: cartApi.reducer,
+    [productOrderApi.reducerPath]: productOrderApi.reducer,
     [userApi.reducerPath]: userApi.reducer,
     [authApiSlice.reducerPath]: authApiSlice.reducer,
     [registerApiSlice.reducerPath]: registerApiSlice.reducer,
     [feedbackApi.reducerPath]: feedbackApi.reducer,
     [travelPackageApi.reducerPath]: travelPackageApi.reducer,
-    [privacyApi.reducerPath]: privacyApi.reducer, 
+    [privacyApi.reducerPath]: privacyApi.reducer,
     [locationApi.reducerPath]: locationApi.reducer,
     [destinationApi.reducerPath]: destinationApi.reducer,
     [travelDeparturesApi.reducerPath]: travelDeparturesApi.reducer,
+    [packageBookingApi.reducerPath]: packageBookingApi.reducer,
     [accommodationApi.reducerPath]: accommodationApi.reducer,
     [accommodationBookingApi.reducerPath]: accommodationBookingApi.reducer,
     [roomsApi.reducerPath]: roomsApi.reducer,
@@ -43,13 +47,15 @@ export const store = configureStore({
       .concat(registerApiSlice.middleware)
       .concat(feedbackApi.middleware)
       .concat(travelPackageApi.middleware)
-      .concat(privacyApi.middleware) 
+      .concat(privacyApi.middleware)
       .concat(destinationApi.middleware)
-      .concat(travelDeparturesApi.middleware) 
+      .concat(travelDeparturesApi.middleware)
       .concat(locationApi.middleware)
       .concat(accommodationApi.middleware)
-      .concat(accommodationBookingApi.middleware) 
-      .concat(roomsApi.middleware), 
+      .concat(accommodationBookingApi.middleware)
+      .concat(roomsApi.middleware)
+      .concat(productOrderApi.middleware)
+      .concat(packageBookingApi.middleware),
 });
 
 export default store;

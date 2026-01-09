@@ -11,7 +11,6 @@ const rawBaseQuery = fetchBaseQuery({
   },
 });
 
-let isRefreshing = false;
 let refreshPromise = null;
 
 export const baseQuery = async (args, api, extraOptions) => {

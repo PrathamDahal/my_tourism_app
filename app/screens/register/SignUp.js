@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -10,27 +10,41 @@ import {
   ScrollView,
   Platform,
   KeyboardAvoidingView,
+  Image,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { useNavigation } from "@react-navigation/native";
 import { useFormik } from "formik";
 import * as Yup from "yup";
+import * as ImagePicker from "expo-image-picker";
 import { useRegisterUserMutation } from "../../services/registerApi";
+import { useLazyCheckEmailQuery } from "../../services/auth/authApiSlice";
 import { FontAwesome } from "@expo/vector-icons";
 import { fontNames } from "../../config/font";
 
 const RegisterScreen = () => {
   const navigation = useNavigation();
   const [registerUser, { isLoading }] = useRegisterUserMutation();
+  const [checkEmail, { data: emailCheckData, isFetching: isCheckingEmail }] =
+    useLazyCheckEmailQuery();
   const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState("success"); // 'success' or 'error'
+  const [modalMessage, setModalMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [emailValidationStatus, setEmailValidationStatus] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  const debounceTimer = useRef(null);
 
   const validationSchema = Yup.object().shape({
     firstName: Yup.string().required("First name is required"),
     lastName: Yup.string().required("Last name is required"),
-    email: Yup.string().email("Invalid email").required("Email is required"),
+    email: Yup.string()
+      .email("Invalid email address")
+      .required("Email is required"),
     phone: Yup.string().required("Phone is required"),
+    gender: Yup.string().required("Gender is required"),
     username: Yup.string().required("Username is required"),
     password: Yup.string()
       .min(8, "Password must be at least 8 characters")
@@ -38,8 +52,8 @@ const RegisterScreen = () => {
     confirmPassword: Yup.string()
       .oneOf([Yup.ref("password"), null], "Passwords must match")
       .required("Confirm Password is required"),
-    gender: Yup.string().required("Gender is required"),
     role: Yup.string().required("Role is required"),
+    images: Yup.mixed().nullable(),
   });
 
   const formik = useFormik({
@@ -51,37 +65,121 @@ const RegisterScreen = () => {
       phone: "",
       permanentAddress: "",
       temporaryAddress: "",
+      gender: "",
       username: "",
       password: "",
       confirmPassword: "",
-      gender: "",
-      role: "",
+      role: "NORMAL",
+      images: null,
     },
     validationSchema,
     onSubmit: async (values, { setSubmitting, setStatus }) => {
       try {
         const { confirmPassword, ...apiPayload } = values;
+        
+        // If no image selected, remove images field
+        if (!apiPayload.images) {
+          delete apiPayload.images;
+        }
+        
         const response = await registerUser(apiPayload).unwrap();
-
+        
         if (response.success) {
+          setModalType("success");
+          setModalMessage("User has been registered successfully!");
           setShowModal(true);
+          
           setTimeout(() => {
             setShowModal(false);
             navigation.reset({
               index: 0,
-              routes: [{ name: "MainStack" }],
+              routes: [{ name: "Login" }],
             });
           }, 2000);
+        } else {
+          setModalType("error");
+          setModalMessage(response.message || "Registration failed!");
+          setShowModal(true);
+          setTimeout(() => setShowModal(false), 3000);
         }
       } catch (err) {
-        setStatus(
-          err.data?.message || "Registration failed. Please try again."
-        );
+        const errorMessage = err.data?.message || err.message || "Registration failed. Please try again.";
+        
+        setModalType("error");
+        setModalMessage(errorMessage);
+        setShowModal(true);
+        setStatus(errorMessage);
+        
+        setTimeout(() => setShowModal(false), 3000);
       } finally {
         setSubmitting(false);
       }
     },
   });
+
+  // Debounced email validation
+  useEffect(() => {
+    const emailValue = formik.values.email;
+
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+
+    if (!emailValue || !emailValue.includes("@")) {
+      setEmailValidationStatus(null);
+      return;
+    }
+
+    debounceTimer.current = setTimeout(() => {
+      checkEmail(emailValue);
+    }, 500);
+
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, [formik.values.email, checkEmail]);
+
+  // Update validation status based on API response
+  useEffect(() => {
+    if (emailCheckData !== undefined) {
+      setEmailValidationStatus(
+        emailCheckData.available || emailCheckData.success ? "valid" : "invalid"
+      );
+    }
+  }, [emailCheckData]);
+
+  // Image picker
+  const pickImage = async () => {
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (permissionResult.granted === false) {
+      alert("Permission to access camera roll is required!");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'], 
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      setSelectedImage(asset.uri);
+      
+      // Set the asset directly - RTK will handle FormData conversion
+      formik.setFieldValue("images", asset);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    formik.setFieldValue("images", null);
+    setSelectedImage(null);
+  };
 
   return (
     <KeyboardAvoidingView
@@ -102,6 +200,36 @@ const RegisterScreen = () => {
             {formik.status && (
               <Text style={styles.errorMessage}>{formik.status}</Text>
             )}
+
+            {/* Profile Image */}
+            <View style={styles.imageSection}>
+              <TouchableOpacity
+                style={styles.imagePickerButton}
+                onPress={pickImage}
+              >
+                {selectedImage ? (
+                  <View style={styles.imageContainer}>
+                    <Image
+                      source={{ uri: selectedImage }}
+                      style={styles.profileImage}
+                    />
+                    <TouchableOpacity
+                      style={styles.removeImageButton}
+                      onPress={handleRemoveImage}
+                    >
+                      <FontAwesome name="times-circle" size={24} color="#ef4444" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.imagePlaceholder}>
+                    <FontAwesome name="camera" size={32} color="#9ca3af" />
+                    <Text style={styles.imagePlaceholderText}>
+                      Add Profile Photo
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
 
             <Text style={styles.sectionTitle}>Personal Information</Text>
 
@@ -176,21 +304,43 @@ const RegisterScreen = () => {
             )}
 
             <Text style={styles.inputTitle}>Email*</Text>
-            <TextInput
-              placeholder="Enter email"
-              style={[
-                styles.input,
-                formik.touched.email &&
-                  formik.errors.email &&
-                  styles.errorInput,
-              ]}
-              onChangeText={formik.handleChange("email")}
-              onBlur={formik.handleBlur("email")}
-              value={formik.values.email}
-              keyboardType="email-address"
-            />
+            <View style={styles.inputWrapper}>
+              <TextInput
+                placeholder="Enter email"
+                style={[
+                  styles.input,
+                  formik.touched.email &&
+                    formik.errors.email &&
+                    styles.errorInput,
+                  { paddingRight: 40 },
+                ]}
+                onChangeText={formik.handleChange("email")}
+                onBlur={formik.handleBlur("email")}
+                value={formik.values.email}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              {isCheckingEmail && (
+                <View style={styles.iconRight}>
+                  <ActivityIndicator size="small" color="#6b7280" />
+                </View>
+              )}
+              {!isCheckingEmail && emailValidationStatus === "valid" && (
+                <View style={styles.iconRight}>
+                  <FontAwesome name="check-circle" size={20} color="#10b981" />
+                </View>
+              )}
+              {!isCheckingEmail && emailValidationStatus === "invalid" && (
+                <View style={styles.iconRight}>
+                  <FontAwesome name="times-circle" size={20} color="#ef4444" />
+                </View>
+              )}
+            </View>
             {formik.touched.email && formik.errors.email && (
               <Text style={styles.errorText}>{formik.errors.email}</Text>
+            )}
+            {!isCheckingEmail && emailValidationStatus === "invalid" && (
+              <Text style={styles.errorText}>Email is already taken</Text>
             )}
 
             <Text style={styles.inputTitle}>Phone*</Text>
@@ -211,7 +361,6 @@ const RegisterScreen = () => {
               <Text style={styles.errorText}>{formik.errors.phone}</Text>
             )}
 
-            {/* New Optional Address Fields */}
             <Text style={styles.inputTitle}>Permanent Address</Text>
             <TextInput
               placeholder="Enter permanent address"
@@ -245,6 +394,7 @@ const RegisterScreen = () => {
               onChangeText={formik.handleChange("username")}
               onBlur={formik.handleBlur("username")}
               value={formik.values.username}
+              autoCapitalize="none"
             />
             {formik.touched.username && formik.errors.username && (
               <Text style={styles.errorText}>{formik.errors.username}</Text>
@@ -315,34 +465,20 @@ const RegisterScreen = () => {
                 </Text>
               )}
 
-            {/* Role */}
-            <Text style={styles.inputTitle}>Role Selection*</Text>
-            <View style={[styles.input, styles.pickerBox]}>
-              <Picker
-                selectedValue={formik.values.role}
-                onValueChange={(itemValue) =>
-                  formik.setFieldValue("role", itemValue)
-                }
-              >
-                <Picker.Item label="Select Role*" value="" />
-                <Picker.Item label="Normal" value="normal" />
-                <Picker.Item label="Seller" value="seller" />
-                <Picker.Item label="Host" value="host" />
-                <Picker.Item label="Travel Agency" value="travelAgency" />
-                <Picker.Item label="Admin" value="admin" />
-              </Picker>
-            </View>
-            {formik.touched.role && formik.errors.role && (
-              <Text style={styles.errorText}>{formik.errors.role}</Text>
-            )}
-
             <TouchableOpacity
               style={[
                 styles.button,
-                (isLoading || formik.isSubmitting) && styles.buttonDisabled,
+                (isLoading ||
+                  formik.isSubmitting ||
+                  emailValidationStatus === "invalid") &&
+                  styles.buttonDisabled,
               ]}
               onPress={formik.handleSubmit}
-              disabled={isLoading || formik.isSubmitting}
+              disabled={
+                isLoading ||
+                formik.isSubmitting ||
+                emailValidationStatus === "invalid"
+              }
             >
               {isLoading || formik.isSubmitting ? (
                 <ActivityIndicator color="#fff" />
@@ -350,15 +486,39 @@ const RegisterScreen = () => {
                 <Text style={styles.buttonText}>Register</Text>
               )}
             </TouchableOpacity>
+
+            <View style={styles.loginRedirect}>
+              <Text style={styles.loginText}>Already have an account? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate("Login")}>
+                <Text style={styles.loginLink}>Login here</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
         <Modal visible={showModal} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalBox}>
-              <Text style={styles.modalText}>
-                User has been registered successfully!!!
-              </Text>
+              {modalType === "success" ? (
+                <>
+                  <FontAwesome name="check-circle" size={48} color="#10b981" />
+                  <Text style={styles.modalTextSuccess}>{modalMessage}</Text>
+                  <Text style={styles.modalSubText}>
+                    Redirecting to login...
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <FontAwesome name="times-circle" size={48} color="#ef4444" />
+                  <Text style={styles.modalTextError}>{modalMessage}</Text>
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={() => setShowModal(false)}
+                  >
+                    <Text style={styles.modalButtonText}>Close</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </View>
         </Modal>
@@ -367,96 +527,150 @@ const RegisterScreen = () => {
   );
 };
 
-export default RegisterScreen;
-
 const styles = StyleSheet.create({
   headerBox: {
-    backgroundColor: "#dc2626",
     paddingTop: 32,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
+    paddingBlock: 16,
+    backgroundColor: "#f6413bff",
+    alignItems: "center",
   },
   headerText: {
-    color: "#fff",
     fontSize: 24,
-    fontWeight: "bold",
+    fontFamily: fontNames.nunito.semiBold,
+    color: "#fff",
   },
   formBox: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    padding: 20,
+  },
+  imageSection: {
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  imagePickerButton: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    overflow: "hidden",
+  },
+  imageContainer: {
+    width: "100%",
+    height: "100%",
+    position: "relative",
+  },
+  profileImage: {
+    width: "100%",
+    height: "100%",
+  },
+  removeImageButton: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 2,
+  },
+  imagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#e5e7eb",
+    borderStyle: "dashed",
+    borderRadius: 60,
+  },
+  imagePlaceholderText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: "#6b7280",
+    textAlign: "center",
   },
   sectionTitle: {
-    fontSize: 24,
-    fontFamily: fontNames.openSans.semibold,
-    color: "#374151",
-    marginVertical: 12,
-    paddingBottom: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-  },
-  inputTitle: {
-    fontSize: 14,
-    fontFamily: fontNames.nunito.semiBold,
-    marginBottom: 4,
-    color: "#111827",
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 20,
+    marginBottom: 10,
+    color: "#1f2937",
   },
   gridRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    gap: 10,
   },
   gridItem: {
     flex: 1,
-    marginRight: 6,
   },
-
-  inputWrapper: {
-    position: "relative",
-  },
-  iconRight: {
-    position: "absolute",
-    right: 10,
-    top: 20,
-    transform: [{ translateY: -10 }],
-    zIndex: 10,
+  inputTitle: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginBottom: 5,
+    color: "#374151",
   },
   input: {
     borderWidth: 1,
     borderColor: "#d1d5db",
     borderRadius: 8,
-    padding: 10,
-    marginBottom: 8,
-    backgroundColor: "#fff",
+    padding: 12,
+    marginBottom: 10,
+    fontSize: 14,
   },
-  pickerBox: {
-    padding: 0,
+  inputWrapper: {
+    position: "relative",
+    marginBottom: 10,
+  },
+  iconRight: {
+    position: "absolute",
+    right: 12,
+    top: 12,
   },
   errorInput: {
-    borderColor: "red",
+    borderColor: "#ef4444",
   },
   errorText: {
-    color: "red",
+    color: "#ef4444",
     fontSize: 12,
-    marginBottom: 6,
+    marginTop: -8,
+    marginBottom: 8,
   },
   errorMessage: {
-    color: "red",
-    marginBottom: 12,
+    color: "#ef4444",
+    fontSize: 14,
+    marginBottom: 10,
     textAlign: "center",
   },
+  pickerBox: {
+    justifyContent: "center",
+  },
   button: {
-    backgroundColor: "#dc2626",
-    paddingVertical: 14,
+    backgroundColor: "#f6443bff",
+    padding: 8,
     borderRadius: 8,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 20,
   },
   buttonDisabled: {
-    opacity: 0.6,
+    backgroundColor: "#9ca3af",
   },
   buttonText: {
     color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
+    fontSize: 24,
+    fontFamily: fontNames.nunito.semiBold,
+  },
+  loginRedirect: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 16,
+  },
+  loginText: {
+    fontSize: 14,
+    color: "#6b7280",
+  },
+  loginLink: {
+    fontSize: 14,
+    color: "#f6443bff",
+    fontWeight: "600",
   },
   modalOverlay: {
     flex: 1,
@@ -466,13 +680,43 @@ const styles = StyleSheet.create({
   },
   modalBox: {
     backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 8,
+    padding: 30,
+    borderRadius: 12,
     alignItems: "center",
+    width: "80%",
+    maxWidth: 400,
   },
-  modalText: {
+  modalTextSuccess: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#10b981",
+    marginTop: 16,
+    textAlign: "center",
+  },
+  modalTextError: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#ef4444",
+    marginTop: 16,
+    textAlign: "center",
+  },
+  modalSubText: {
+    fontSize: 14,
+    color: "#6b7280",
+    marginTop: 8,
+  },
+  modalButton: {
+    marginTop: 16,
+    backgroundColor: "#f6443bff",
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  modalButtonText: {
+    color: "#fff",
     fontSize: 16,
-    fontWeight: "bold",
-    color: "green",
+    fontWeight: "600",
   },
 });
+
+export default RegisterScreen;

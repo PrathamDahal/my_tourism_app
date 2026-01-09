@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -7,41 +7,40 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Platform,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import {
   useClearCartMutation,
   useGetCartQuery,
   useRemoveFromCartMutation,
   useUpdateCartMutation,
 } from "../../services/cartApi";
+import { useCreateOrderMutation } from "../../services/productOrder";
 import QrPurchaseModal from "../../components/Cart/OrderModal/QrOrderModal";
 import CODPurchaseModal from "../../components/Cart/OrderModal/CoDOrderModal";
+import { Ionicons } from '@expo/vector-icons';
 
 const MyCart = () => {
+  const navigation = useNavigation();
   const { data: cartData, isLoading, isError, refetch } = useGetCartQuery();
   const [removeFromCart] = useRemoveFromCartMutation();
   const [clearCart] = useClearCartMutation();
   const [updateCart] = useUpdateCartMutation();
+  const [createOrder, { isLoading: isCreatingOrder }] =
+    useCreateOrderMutation();
   const [selectedPayment, setSelectedPayment] = useState(null);
-  const [cartSummary, setCartSummary] = useState({
-    subtotal: 0,
-    shipping: 0,
-    total: 0,
-    itemCount: 0,
-  });
 
   const [products, setProducts] = useState([]);
-  const [total, setTotal] = useState(0);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [currentVendorCheckout, setCurrentVendorCheckout] = useState(null);
+  const [selectedVendorIndex, setSelectedVendorIndex] = useState(null);
 
-  const transformCartData = (apiData) => {
+  const transformCartData = useCallback((apiData) => {
     if (!apiData || !Array.isArray(apiData.items)) {
-      // If response is known message like "No items in cart", don't log error
       if (apiData?.message === "No items in cart") {
         return [];
       }
-
       console.error("Invalid cart data structure:", apiData);
       return [];
     }
@@ -82,89 +81,16 @@ const MyCart = () => {
     });
 
     return Array.from(vendorMap.values());
-  };
+  }, []);
 
   useEffect(() => {
     if (cartData) {
       const transformedData = transformCartData(cartData);
       setProducts(transformedData);
     }
-  }, [cartData]);
+  }, [cartData, transformCartData]);
 
-  useEffect(() => {
-    let calculatedTotal = 0;
-    products.forEach((vendor) => {
-      vendor.items.forEach((item) => {
-        if (item.checked) {
-          const price = parseFloat(item.price);
-          if (!isNaN(price)) {
-            calculatedTotal += item.quantity * price;
-          }
-        }
-      });
-    });
-    setTotal(calculatedTotal);
-  }, [products]);
-
-  const toggleItemCheck = (vendorIndex, itemIndex) => {
-    const updatedProducts = [...products];
-    const item = updatedProducts[vendorIndex].items[itemIndex];
-    item.checked = !item.checked;
-
-    const vendor = updatedProducts[vendorIndex];
-    vendor.checked = vendor.items.every((item) => item.checked);
-
-    setProducts(updatedProducts);
-  };
-
-  const toggleVendorCheck = (vendorIndex) => {
-    const updatedProducts = [...products];
-    const vendor = updatedProducts[vendorIndex];
-    vendor.checked = !vendor.checked;
-    vendor.items.forEach((item) => {
-      item.checked = vendor.checked;
-    });
-    setProducts(updatedProducts);
-  };
-
-  const updateQuantity = async (vendorIndex, itemIndex, newQuantity) => {
-    try {
-      const updatedProducts = [...products];
-      const item = updatedProducts[vendorIndex].items[itemIndex];
-
-      newQuantity = Number(newQuantity);
-      if (isNaN(newQuantity) || newQuantity < 1) return;
-
-      newQuantity = Math.min(newQuantity, item.stock);
-      if (newQuantity === item.quantity) return;
-
-      // Optimistic update
-      item.quantity = newQuantity;
-      setProducts(updatedProducts);
-
-      // Update backend
-      await updateCart({
-        productId: item.productId,
-        quantity: newQuantity,
-      }).unwrap();
-    } catch (error) {
-      if (error?.data) {
-        console.error("Backend error message:", error.data.message);
-      } else {
-        console.error("Failed to update quantity:", error);
-      }
-      refetch();
-    }
-  };
-
-  const calculateSubtotal = (item) => {
-    const price = parseFloat(item.price);
-    if (isNaN(price)) return "0.00";
-    return (item.quantity * price).toFixed(2);
-  };
-
-  // Calculate summary based on selected items
-  const calculateSummary = () => {
+  const cartSummary = useMemo(() => {
     let subtotal = 0;
     let shipping = 0;
     let itemCount = 0;
@@ -187,58 +113,192 @@ const MyCart = () => {
       total: subtotal + shipping,
       itemCount,
     };
-  };
+  }, [products]);
 
-  const getCurrentVendorItems = () => {
+  const toggleItemCheck = useCallback((vendorIndex, itemIndex) => {
+    setProducts((prevProducts) => {
+      const updatedProducts = [...prevProducts];
+      const item = updatedProducts[vendorIndex].items[itemIndex];
+      item.checked = !item.checked;
+
+      const vendor = updatedProducts[vendorIndex];
+      vendor.checked = vendor.items.every((item) => item.checked);
+
+      return updatedProducts;
+    });
+  }, []);
+
+  const toggleVendorCheck = useCallback((vendorIndex) => {
+    setProducts((prevProducts) => {
+      const updatedProducts = [...prevProducts];
+      const vendor = updatedProducts[vendorIndex];
+      vendor.checked = !vendor.checked;
+      vendor.items.forEach((item) => {
+        item.checked = vendor.checked;
+      });
+      return updatedProducts;
+    });
+  }, []);
+
+  const updateQuantity = useCallback(
+    async (vendorIndex, itemIndex, newQuantity) => {
+      try {
+        setProducts((prevProducts) => {
+          const updatedProducts = [...prevProducts];
+          const item = updatedProducts[vendorIndex].items[itemIndex];
+
+          newQuantity = Number(newQuantity);
+          if (isNaN(newQuantity) || newQuantity < 1) return prevProducts;
+
+          newQuantity = Math.min(newQuantity, item.stock);
+          if (newQuantity === item.quantity) return prevProducts;
+
+          item.quantity = newQuantity;
+          return updatedProducts;
+        });
+
+        const item = products[vendorIndex].items[itemIndex];
+        await updateCart({
+          productId: item.productId,
+          quantity: newQuantity,
+        }).unwrap();
+      } catch (error) {
+        if (error?.data) {
+          console.error("Backend error message:", error.data.message);
+        } else {
+          console.error("Failed to update quantity:", error);
+        }
+        refetch();
+      }
+    },
+    [products, updateCart, refetch]
+  );
+
+  const calculateSubtotal = useCallback((item) => {
+    const price = parseFloat(item.price);
+    if (isNaN(price)) return "0.00";
+    return (item.quantity * price).toFixed(2);
+  }, []);
+
+  const getCurrentVendorItems = useCallback(() => {
     if (!currentVendorCheckout) return [];
     return currentVendorCheckout.items.filter((item) => item.checked);
-  };
+  }, [currentVendorCheckout]);
 
-  const getCurrentVendorTotal = () => {
+  const getCurrentVendorTotal = useCallback(() => {
     return getCurrentVendorItems().reduce((sum, item) => {
       const price = parseFloat(item.price);
       return !isNaN(price) ? sum + price * item.quantity : sum;
     }, 0);
-  };
+  }, [getCurrentVendorItems]);
 
-  // Update summary whenever products or shipping costs change
-  useEffect(() => {
-    const summary = calculateSummary();
-    setCartSummary(summary);
-  }, [products]);
+  const handleClearCart = useCallback(async () => {
+    Alert.alert(
+      "Clear Cart",
+      "Are you sure you want to remove all items from your cart?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Clear All",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await clearCart().unwrap();
+              refetch();
+              Alert.alert("Success", "Cart cleared.");
+            } catch (error) {
+              console.error("Failed to clear cart:", error);
+              Alert.alert("Error", "Could not clear cart.");
+            }
+          },
+        },
+      ]
+    );
+  }, [clearCart, refetch]);
 
-  const handleClearCart = async () => {
-    try {
-      await clearCart().unwrap();
-      refetch();
-      Alert.alert("Success", "Cart cleared.");
-    } catch (error) {
-      console.error("Failed to clear cart:", error);
-      Alert.alert("Error", "Could not clear cart.");
-    }
-  };
+  const handleVendorCheckout = useCallback(
+    async (vendorIndex) => {
+      const vendor = products[vendorIndex];
+      const itemsToCheckout = vendor.items.filter((item) => item.checked);
 
-  const handleVendorCheckout = (vendorIndex) => {
-    const vendor = products[vendorIndex];
-    const itemsToCheckout = vendor.items.filter((item) => item.checked);
+      if (itemsToCheckout.length === 0) {
+        Alert.alert("Error", "Please select items to checkout");
+        return;
+      }
 
-    if (itemsToCheckout.length === 0) {
-      Alert.alert("Error", "Please select items to checkout");
-      return;
-    }
+      if (!selectedPayment || selectedVendorIndex !== vendorIndex) {
+        Alert.alert("Error", "Please select a payment method");
+        return;
+      }
 
-    if (!selectedPayment) {
-      Alert.alert("Error", "Please select a payment method");
-      return;
-    }
+      // Prepare order data for API
+      const orderData = {
+        items: itemsToCheckout.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        })),
+        paymentMethod: selectedPayment,
+        vendorId: vendor.vendorId,
+      };
 
-    setCurrentVendorCheckout(vendor);
-    setIsPurchaseModalOpen(true);
-  };
+      try {
+        // Create order via RTK Query
+        const result = await createOrder(orderData).unwrap();
 
-  const hasVendorCheckedItems = (vendorIndex) => {
-    return products[vendorIndex]?.items.some((item) => item.checked);
-  };
+        Alert.alert(
+          "Order Created",
+          `Order #${result.code || result.id} has been placed successfully!`,
+          [
+            {
+              text: "View Order",
+              onPress: () => {
+                navigation.navigate("OrderDetails", { orderId: result.id });
+              },
+            },
+            {
+              text: "OK",
+              onPress: () => {
+                // Remove checked items from cart
+                itemsToCheckout.forEach((item) => {
+                  removeFromCart(item.productId);
+                });
+                refetch();
+              },
+            },
+          ]
+        );
+
+        // Reset selection
+        setSelectedPayment(null);
+        setSelectedVendorIndex(null);
+      } catch (error) {
+        console.error("Failed to create order:", error);
+        Alert.alert(
+          "Order Failed",
+          error?.data?.message || "Failed to create order. Please try again."
+        );
+      }
+    },
+    [
+      products,
+      selectedPayment,
+      selectedVendorIndex,
+      createOrder,
+      navigation,
+      removeFromCart,
+      refetch,
+    ]
+  );
+
+  const hasVendorCheckedItems = useCallback(
+    (vendorIndex) => {
+      return products[vendorIndex]?.items.some((item) => item.checked);
+    },
+    [products]
+  );
 
   if (isLoading)
     return (
@@ -262,6 +322,16 @@ const MyCart = () => {
 
   return (
     <View style={styles.safeArea}>
+      <View style={styles.stickyHeader}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#090d1cff" />
+          <Text style={styles.backButtonText}> Go Back</Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
@@ -279,7 +349,6 @@ const MyCart = () => {
           <>
             {products.map((vendor, vendorIndex) => (
               <View key={vendor.vendorId} style={styles.vendorContainer}>
-                {/* Vendor header with checkbox */}
                 <TouchableOpacity
                   style={styles.vendorHeader}
                   onPress={() => toggleVendorCheck(vendorIndex)}
@@ -292,7 +361,6 @@ const MyCart = () => {
                   </Text>
                 </TouchableOpacity>
 
-                {/* Vendor items */}
                 {vendor.items.map((item, itemIndex) => (
                   <View key={item.id} style={styles.itemContainer}>
                     <TouchableOpacity
@@ -327,13 +395,11 @@ const MyCart = () => {
                               : priceNum.toFixed(2);
                           })()}
                         </Text>
-
                         <Text style={styles.itemMetaText}>
                           Stock: {item.stock}
                         </Text>
                       </View>
 
-                      {/* Quantity controls */}
                       <View style={{ marginBottom: 8 }}>
                         <Text
                           style={{
@@ -393,13 +459,34 @@ const MyCart = () => {
 
                         <TouchableOpacity
                           style={styles.removeButton}
-                          onPress={async () => {
-                            try {
-                              await removeFromCart(item.productId).unwrap();
-                              refetch();
-                            } catch (err) {
-                              Alert.alert("Error", "Failed to remove item");
-                            }
+                          onPress={() => {
+                            Alert.alert(
+                              "Remove Item",
+                              `Are you sure you want to remove "${item.name}" from your cart?`,
+                              [
+                                {
+                                  text: "Cancel",
+                                  style: "cancel",
+                                },
+                                {
+                                  text: "Remove",
+                                  style: "destructive",
+                                  onPress: async () => {
+                                    try {
+                                      await removeFromCart(
+                                        item.productId
+                                      ).unwrap();
+                                      refetch();
+                                    } catch (err) {
+                                      Alert.alert(
+                                        "Error",
+                                        "Failed to remove item"
+                                      );
+                                    }
+                                  },
+                                },
+                              ]
+                            );
                           }}
                         >
                           <Text style={styles.removeText}>Remove</Text>
@@ -409,7 +496,6 @@ const MyCart = () => {
                   </View>
                 ))}
 
-                {/* Vendor checkout section */}
                 <View style={styles.checkoutSection}>
                   <Text style={styles.paymentTitle}>Payment Method</Text>
 
@@ -417,9 +503,14 @@ const MyCart = () => {
                     <TouchableOpacity
                       style={[
                         styles.paymentOption,
-                        selectedPayment === "cod" && styles.selectedPayment,
+                        selectedPayment === "cod" &&
+                          selectedVendorIndex === vendorIndex &&
+                          styles.selectedPayment,
                       ]}
-                      onPress={() => setSelectedPayment("cod")}
+                      onPress={() => {
+                        setSelectedPayment("cod");
+                        setSelectedVendorIndex(vendorIndex);
+                      }}
                     >
                       <Text style={styles.paymentText}>Cash on Delivery</Text>
                     </TouchableOpacity>
@@ -427,9 +518,14 @@ const MyCart = () => {
                     <TouchableOpacity
                       style={[
                         styles.paymentOption,
-                        selectedPayment === "payNow" && styles.selectedPayment,
+                        selectedPayment === "payNow" &&
+                          selectedVendorIndex === vendorIndex &&
+                          styles.selectedPayment,
                       ]}
-                      onPress={() => setSelectedPayment("payNow")}
+                      onPress={() => {
+                        setSelectedPayment("payNow");
+                        setSelectedVendorIndex(vendorIndex);
+                      }}
                     >
                       <Text style={styles.paymentText}>Pay with QR</Text>
                     </TouchableOpacity>
@@ -439,23 +535,31 @@ const MyCart = () => {
                     style={[
                       styles.checkoutButton,
                       (!selectedPayment ||
-                        !hasVendorCheckedItems(vendorIndex)) &&
+                        selectedVendorIndex !== vendorIndex ||
+                        !hasVendorCheckedItems(vendorIndex) ||
+                        isCreatingOrder) &&
                         styles.disabledCheckout,
                     ]}
                     onPress={() => handleVendorCheckout(vendorIndex)}
                     disabled={
-                      !selectedPayment || !hasVendorCheckedItems(vendorIndex)
+                      !selectedPayment ||
+                      selectedVendorIndex !== vendorIndex ||
+                      !hasVendorCheckedItems(vendorIndex) ||
+                      isCreatingOrder
                     }
                   >
-                    <Text style={styles.checkoutButtonText}>
-                      Checkout with {vendor.vendor.split(" ")[0]}
-                    </Text>
+                    {isCreatingOrder ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.checkoutButtonText}>
+                        Checkout with {vendor.vendor.split(" ")[0]}
+                      </Text>
+                    )}
                   </TouchableOpacity>
                 </View>
               </View>
             ))}
 
-            {/* Cart summary */}
             <View style={styles.summaryContainer}>
               <Text style={styles.summaryTitle}>
                 Order Summary ({cartSummary.itemCount}{" "}
@@ -486,6 +590,7 @@ const MyCart = () => {
           </>
         )}
       </ScrollView>
+
       {selectedPayment === "cod" ? (
         <CODPurchaseModal
           isOpen={isPurchaseModalOpen}
@@ -515,11 +620,39 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "#f8f9fa",
-    paddingTop: 32,
+    paddingTop: Platform.OS === "ios" ? 60 : 32,
+  },
+  stickyHeader: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 50 : 30,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "transparent",
+  },
+  backButton: {
+    flexDirection: "row",
+    alignSelf: "flex-start",
+    backgroundColor: "#fff",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
   },
   container: {
     paddingHorizontal: 16,
-    paddingTop: 20,
+    paddingTop: 60,
     paddingBottom: 40,
   },
   loadingContainer: {

@@ -7,7 +7,6 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
-  RefreshControl,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useGetProductsByCategoryQuery } from "../../../services/productApi";
@@ -226,13 +225,8 @@ const CategoryProducts = ({ route }) => {
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.listContent}
         onScrollBeginDrag={() => setShowSuggestions(false)}
-        refreshControl={
-          <RefreshControl
-            refreshing={isFetching}
-            onRefresh={refetch}
-            colors={["#2a52be"]}
-          />
-        }
+        refreshing={isFetching}
+        onRefresh={refetch}
         ListEmptyComponent={
           <View style={styles.centerContainer}>
             <Text style={styles.emptyText}>No products available</Text>

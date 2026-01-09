@@ -7,16 +7,17 @@ import {
   TextInput,
   TouchableOpacity,
   Modal,
-  ScrollView,
   StyleSheet,
   Alert,
 } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 import { useFetchUserProfileQuery } from "../../../services/userApi";
+import { useAuth } from "../../../context/AuthContext";
 import {
   useDeleteReviewMutation,
   useEditReviewMutation,
 } from "../../../services/feedback";
+import { fontNames } from "../../../config/font";
 
 // Simple Rating Stars Component
 const RatingStars = ({ rating, onChange, interactive }) => {
@@ -45,7 +46,13 @@ const CustomerFeedback = ({ feedback, onSubmit }) => {
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: userProfile } = useFetchUserProfileQuery();
+  const { userToken } = useAuth();
+  
+  // ✅ Only fetch user profile if logged in
+  const { data: userProfile } = useFetchUserProfileQuery(undefined, {
+    skip: !userToken,
+  });
+  
   const isLoggedIn = !!userProfile;
 
   const [deleteReview, { isLoading: deleting }] = useDeleteReviewMutation();
@@ -114,7 +121,7 @@ const CustomerFeedback = ({ feedback, onSubmit }) => {
   };
 
   return (
-    <ScrollView style={{ padding: 16 }}>
+    <View style={{ padding: 12 }}>
       {/* Existing Reviews */}
       {feedback.map((item, index) => (
         <View key={index} style={styles.reviewCard}>
@@ -158,7 +165,7 @@ const CustomerFeedback = ({ feedback, onSubmit }) => {
       ))}
 
       {/* Submit Review */}
-      {isLoggedIn && (
+      {isLoggedIn ? (
         <View style={styles.form}>
           <Text style={styles.formTitle}>Give a Review</Text>
 
@@ -178,10 +185,16 @@ const CustomerFeedback = ({ feedback, onSubmit }) => {
             style={styles.submitBtn}
             disabled={submitting}
           >
-            <Text style={{ color: "#fff" }}>
+            <Text style={{ color: "#fff", fontFamily: fontNames.nunito.semiBold, fontSize: 16 }}>
               {submitting ? "Submitting..." : "Submit Review"}
             </Text>
           </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.loginPrompt}>
+          <Text style={styles.loginPromptText}>
+            Please login to add review
+          </Text>
         </View>
       )}
 
@@ -225,7 +238,7 @@ const CustomerFeedback = ({ feedback, onSubmit }) => {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </View>
   );
 };
 
@@ -268,7 +281,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   submitBtn: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#c82d1fff",
     paddingVertical: 10,
     alignItems: "center",
     borderRadius: 6,
@@ -291,6 +304,19 @@ const styles = StyleSheet.create({
     right: 10,
   },
   modalTitle: { fontSize: 16, fontWeight: "bold", marginBottom: 8 },
+  loginPrompt: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    padding: 16,
+    alignItems: "center",
+    backgroundColor: "#f9fafb",
+  },
+  loginPromptText: {
+    fontSize: 16,
+    color: "#6b7280",
+    fontWeight: "500",
+  },
 });
 
 export default CustomerFeedback;

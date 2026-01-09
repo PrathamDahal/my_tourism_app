@@ -6,7 +6,6 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
-  RefreshControl,
   TextInput,
   TouchableWithoutFeedback,
 } from "react-native";
@@ -151,13 +150,8 @@ const ProductDisplay = () => {
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.listContent}
         onScrollBeginDrag={() => setShowSuggestions(false)}
-        refreshControl={
-          <RefreshControl
-            refreshing={isFetching}
-            onRefresh={refetch}
-            colors={["#2a52be"]}
-          />
-        }
+        refreshing={isFetching}
+        onRefresh={refetch}
         ListEmptyComponent={
           <View style={styles.centerContainer}>
             <Text style={styles.emptyText}>No active products available</Text>

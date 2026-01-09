@@ -11,6 +11,7 @@ import {
   FlatList,
   TextInput,
   Alert,
+  RefreshControl,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
@@ -36,19 +37,24 @@ export default function StayDetails() {
   const [editingReview, setEditingReview] = useState(null);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
   const isTablet = windowWidth >= 768;
   const maxChars = isTablet ? 1000 : 500;
 
-  const { data, isLoading, isError } = useGetAccommodationBySlugQuery(slug);
+  const { data, isLoading, isError, refetch: refetchAccommodation } = useGetAccommodationBySlugQuery(slug);
   const stay = data;
 
-  const { data: reviewsData, isLoading: reviewsLoading } = useGetReviewsQuery(
-    { type: "accommodations", id: stay?.id },
+  const { 
+    data: reviewsData, 
+    isLoading: reviewsLoading,
+    refetch: refetchReviews 
+  } = useGetReviewsQuery(
+    { type: "accommodation", id: stay?.id },
     { skip: !stay?.id }
   );
 
-  const { data: userProfile } = useFetchUserProfileQuery();
+  const { data: userProfile, refetch: refetchUserProfile } = useFetchUserProfileQuery();
   const [addReview, { isLoading: isAdding }] = useAddReviewMutation();
   const [editReview, { isLoading: isEditing }] = useEditReviewMutation();
   const [deleteReview, { isLoading: isDeleting }] = useDeleteReviewMutation();
@@ -63,6 +69,23 @@ export default function StayDetails() {
       navigation.goBack();
     }
   }, [isError, isLoading, stay, navigation]);
+
+  // Pull to refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      // Refetch all data in parallel
+      await Promise.all([
+        refetchAccommodation(),
+        stay?.id ? refetchReviews() : Promise.resolve(),
+        refetchUserProfile(),
+      ]);
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -133,17 +156,21 @@ export default function StayDetails() {
 
     try {
       await addReview({
-        type: "accommodations",
+        type: "accommodation",
         id: stay.id,
-        rating,
-        comment,
+        rating: Number(rating),
+        comment: comment.trim(),
       }).unwrap();
       setComment("");
       setRating(5);
       setShowReviewForm(false);
       Alert.alert("Success", "Review added successfully");
     } catch (error) {
-      Alert.alert("Error", "Failed to add review");
+      console.error('Add review error:', error);
+      Alert.alert(
+        "Error", 
+        error?.data?.message || error?.message || "Failed to add review"
+      );
     }
   };
 
@@ -156,8 +183,8 @@ export default function StayDetails() {
     try {
       await editReview({
         reviewId: editingReview.id,
-        rating,
-        comment,
+        rating: Number(rating),
+        comment: comment.trim(),
       }).unwrap();
       setComment("");
       setRating(5);
@@ -165,7 +192,11 @@ export default function StayDetails() {
       setShowReviewForm(false);
       Alert.alert("Success", "Review updated successfully");
     } catch (error) {
-      Alert.alert("Error", "Failed to update review");
+      console.error('Edit review error:', error);
+      Alert.alert(
+        "Error", 
+        error?.data?.message || error?.message || "Failed to update review"
+      );
     }
   };
 
@@ -207,7 +238,17 @@ export default function StayDetails() {
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
+      <ScrollView 
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#E53935"]} // Android
+            tintColor="#E53935" // iOS
+          />
+        }
+      >
         {/* Hero Image with Overlay */}
         <View style={styles.mainImageContainer}>
           <Image

@@ -29,22 +29,31 @@ const TravelPackageDetails = () => {
   const limit = isTablet ? 1000 : 500;
 
   const toggleExpanded = () => setExpanded(!expanded);
+  let imageSource;
+
+  // Check images[0]
+  if (packageData.images?.[0] && packageData.images[0].trim() !== "") {
+    imageSource = { uri: `${API_BASE_URL}${packageData.images[0].trim()}` };
+  }
+  // Check coverImage
+  else if (packageData.coverImage && packageData.coverImage.trim() !== "") {
+    imageSource = { uri: `${API_BASE_URL}${packageData.coverImage.trim()}` };
+  }
+  // Fallback to local default
+  else {
+    imageSource = require("../../../assets/Images/Travel/travel-default.jpg");
+  }
 
   // Fetch departures
   const { data: departuresData, isLoading: isLoadingDepartures } =
     useGetPackageDeparturesQuery(packageData.slug);
 
+  const departuresArray = departuresData?.data ?? [];
+
   return (
     <ScrollView style={styles.container}>
       {/* HEADER IMAGE */}
-      <ImageBackground
-        source={
-          packageData.images?.[0]
-            ? { uri: `${API_BASE_URL}${packageData.images[0]}` }
-            : { uri: "https://via.placeholder.com/600x400.png?text=No+Image" }
-        }
-        style={styles.headerImage}
-      >
+      <ImageBackground source={imageSource} style={styles.headerImage}>
         <View style={styles.headerTop}>
           <TouchableOpacity
             style={styles.backButton}
@@ -135,29 +144,46 @@ const TravelPackageDetails = () => {
               color="#C62828"
               style={{ marginTop: 20 }}
             />
-          ) : departuresData?.length > 0 ? (
-            departuresData.map((departure, index) => (
-              <View key={index} style={styles.departureCardProfessional}>
-                <View style={styles.departureInfo}>
-                  <Text style={styles.departureDateProfessional}>
-                    {departure.date}
-                  </Text>
-                  <Text style={styles.departureSpotsProfessional}>
-                    {departure.spotsAvailable} Spots Available
-                  </Text>
-                </View>
-                <View style={styles.departurePriceBadge}>
-                  <Text style={styles.departurePriceProfessional}>
-                    Rs. {departure.price?.toLocaleString() ?? 0}
-                  </Text>
-                  <View style={styles.availableBadgeProfessional}>
-                    <Text style={styles.availableTextProfessional}>
-                      Available
+          ) : departuresArray.length > 0 ? (
+            departuresArray.map((departure, index) => {
+              const formattedDate = new Date(departure.date).toLocaleDateString(
+                "en-GB",
+                {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                }
+              );
+
+              return (
+                <View
+                  key={departure.id}
+                  style={styles.departureCardProfessional}
+                >
+                  <View style={styles.departureInfo}>
+                    <Text style={styles.departureDateProfessional}>
+                      {formattedDate}
+                    </Text>
+                    <Text style={styles.departureSpotsProfessional}>
+                      {departure.capacityRemaining} Spots Available
                     </Text>
                   </View>
+                  <View style={styles.departurePriceBadge}>
+                    <Text style={styles.departurePriceProfessional}>
+                      Rs.{" "}
+                      {(
+                        departure.priceOverride ?? packageData.price
+                      )?.toLocaleString() ?? "0"}
+                    </Text>
+                    <View style={styles.availableBadgeProfessional}>
+                      <Text style={styles.availableTextProfessional}>
+                        Available
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-              </View>
-            ))
+              );
+            })
           ) : (
             <Text style={{ textAlign: "center", marginTop: 10, color: "#555" }}>
               No departures available

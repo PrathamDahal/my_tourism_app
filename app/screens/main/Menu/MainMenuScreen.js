@@ -8,21 +8,18 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../../../context/AuthContext";
+import { useFetchUserProfileQuery } from "../../../services/userApi";
 import UserProfile from "../../../custom/UserProfile";
 import { FontAwesome } from "@expo/vector-icons";
 import { fontNames } from "../../../config/font";
+import { LinearGradient } from 'expo-linear-gradient';
 
 const MainNavigationMenuScreen = () => {
   const navigation = useNavigation();
   const { userToken, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4A90E2" />
-      </View>
-    );
-  }
+  const { data: userData } = useFetchUserProfileQuery(undefined, {
+    skip: !userToken,
+  });
 
   const options = [
     {
@@ -60,17 +57,8 @@ const MainNavigationMenuScreen = () => {
       color: "#A45CFF",
       description: "Get in touch with us",
     },
-    ...(userToken
+    ...(!userToken
       ? [
-          {
-            label: "User Tracking",
-            screen: "UserTracking",
-            icon: "crosshairs",
-            color: "#A45CFF",
-            description: "Keep track of your location",
-          },
-        ]
-      : [
           {
             label: "Login",
             parent: "Auth",
@@ -87,12 +75,37 @@ const MainNavigationMenuScreen = () => {
             color: "#A45CFF",
             description: "Create a new account",
           },
-        ]),
+        ]
+      : []),
   ];
+
+  const handleNavigation = (item) => {
+    try {
+      if (item.parent) {
+        navigation.navigate(item.parent, { screen: item.screen });
+      } else {
+        navigation.navigate(item.screen);
+      }
+    } catch (error) {
+      console.error("Navigation error:", error);
+    }
+  };
+
+  const handleTrackingNavigation = () => {
+    try {
+      navigation.navigate("UserTracking");
+    } catch (error) {
+      console.error("Navigation error:", error);
+    }
+  };
 
   return (
     <View style={styles.container}>
-      {userToken ? (
+      {isLoading ? (
+        <View style={styles.overlay}>
+          <ActivityIndicator size="small" color="#fff" />
+        </View>
+      ) : userToken ? (
         <UserProfile />
       ) : (
         <View style={styles.overlay}>
@@ -117,11 +130,7 @@ const MainNavigationMenuScreen = () => {
               key={index}
               style={styles.menuItem}
               activeOpacity={0.8}
-              onPress={() =>
-                item.parent
-                  ? navigation.navigate(item.parent, { screen: item.screen })
-                  : navigation.navigate(item.screen)
-              }
+              onPress={() => handleNavigation(item)}
             >
               <View style={[styles.iconContainer]}>
                 <FontAwesome name={item.icon} size={40} color={item.color} />
@@ -131,6 +140,68 @@ const MainNavigationMenuScreen = () => {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* User Account Sections - Only show when logged in */}
+        {userToken && (
+          <>
+            {/* My Account Section */}
+            <View style={styles.accountSection}>
+              <Text style={styles.sectionHeader}>My Account</Text>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate("Auth", { 
+                  screen: "MyBookings",
+                  params: { userId: userData?.id }
+                })}
+              >
+                <LinearGradient
+                  colors={['#8B2E2E', '#D94A4A', '#FF6B6B']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.accountCard}
+                >
+                  <View style={styles.accountIconContainer}>
+                    <FontAwesome name="history" size={28} color="#fff" />
+                  </View>
+                  <View style={styles.accountTextContainer}>
+                    <Text style={styles.accountTitle}>Payment History</Text>
+                    <Text style={styles.accountSubtitle}>
+                      View all transactions
+                    </Text>
+                  </View>
+                  <FontAwesome name="chevron-right" size={20} color="#fff" />
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+
+            {/* Safety & Tracking Section */}
+            <View style={styles.trackingSection}>
+              <Text style={styles.sectionHeader}>Safety & Tracking</Text>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={handleTrackingNavigation}
+              >
+                <LinearGradient
+                  colors={['#8B2E2E', '#D94A4A', '#FF6B6B']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.trackingCard}
+                >
+                  <View style={styles.trackingIconContainer}>
+                    <FontAwesome name="send" size={28} color="#fff" />
+                  </View>
+                  <View style={styles.trackingTextContainer}>
+                    <Text style={styles.trackingTitle}>Location Tracking</Text>
+                    <Text style={styles.trackingSubtitle}>
+                      Share location & SOS alerts
+                    </Text>
+                  </View>
+                  <FontAwesome name="chevron-right" size={20} color="#fff" />
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -141,18 +212,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F5F7FA",
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F5F7FA",
-  },
   overlay: {
     backgroundColor: "#C62828",
     padding: 15,
     paddingTop: 40,
     borderBottomLeftRadius: 25,
     borderBottomRightRadius: 25,
+    minHeight: 100,
+    justifyContent: "center",
   },
   location: {
     fontSize: 24,
@@ -227,6 +294,90 @@ const styles = StyleSheet.create({
     color: "#718096",
     textAlign: "center",
     lineHeight: 16,
+  },
+  accountSection: {
+    paddingHorizontal: 32,
+    marginTop: 24,
+    marginBottom: 8,
+  },
+  sectionHeader: {
+    fontSize: 22,
+    fontFamily: fontNames.raleway.regular,
+    color: "#000",
+    marginBottom: 16,
+  },
+  accountCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 20,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  accountIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  accountTextContainer: {
+    flex: 1,
+  },
+  accountTitle: {
+    fontSize: 18,
+    fontFamily: fontNames.playfair.semiBold,
+    color: "#fff",
+    marginBottom: 4,
+  },
+  accountSubtitle: {
+    fontSize: 14,
+    fontFamily: fontNames.openSans.regular,
+    color: "rgba(255, 255, 255, 0.9)",
+  },
+  trackingSection: {
+    paddingHorizontal: 32,
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  trackingCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 20,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  trackingIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  trackingTextContainer: {
+    flex: 1,
+  },
+  trackingTitle: {
+    fontSize: 18,
+    fontFamily: fontNames.playfair.semiBold,
+    color: "#fff",
+    marginBottom: 4,
+  },
+  trackingSubtitle: {
+    fontSize: 14,
+    fontFamily: fontNames.openSans.regular,
+    color: "rgba(255, 255, 255, 0.9)",
   },
 });
 

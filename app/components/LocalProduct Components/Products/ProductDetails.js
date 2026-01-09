@@ -9,8 +9,10 @@ import {
   Dimensions,
   ActivityIndicator,
   FlatList,
+  RefreshControl,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { useGetProductBySlugQuery } from "../../../services/productApi";
@@ -18,6 +20,7 @@ import { useAddToCartMutation } from "../../../services/cartApi";
 import RatingStars from "./../../../custom/RatingStars";
 import { API_BASE_URL } from "../../../../config";
 import CustomerFeedbackContainer from "./CustomerFeedbackContainer";
+import { useGetAverageReviewQuery } from "../../../services/feedback";
 
 const { width } = Dimensions.get("window");
 
@@ -30,12 +33,28 @@ const ProductDetails = () => {
   const [activeTab, setActiveTab] = useState("description");
   const [showErrorToast, setShowErrorToast] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const { data, isLoading, isError } = useGetProductBySlugQuery(slug);
+  const { data, isLoading, isError, isFetching, refetch } =
+    useGetProductBySlugQuery(slug);
   const [addToCart] = useAddToCartMutation();
 
   const product = data;
   const images = product?.images || [];
+
+  const { data: reviewsData } = useGetAverageReviewQuery(
+    {
+      type: "product",
+      id: product?.id,
+    },
+    {
+      skip: !product?.id,
+      refetchOnMountOrArgChange: true,
+    }
+  );
+
+  const rating = reviewsData?.average ?? 0;
+  const hasReviews = (reviewsData?.count ?? 0) > 0;
 
   const increaseQuantity = () => {
     if (product?.stock && quantity < product.stock) {
@@ -66,6 +85,26 @@ const ProductDetails = () => {
       await addToCart({ productId: product.id, quantity }).unwrap();
       navigation.navigate("Auth", { screen: "MyCart" });
     } catch (err) {
+      // Check if it's an unauthorized error (401)
+      if (err?.status === 401 || err?.originalStatus === 401) {
+        Alert.alert(
+          "Login Required",
+          "Can't add items to cart if not logged in",
+          [
+            {
+              text: "Cancel",
+              style: "cancel",
+            },
+            {
+              text: "Login",
+              onPress: () => navigation.navigate("Auth", { screen: "Login" }),
+            },
+          ]
+        );
+        return;
+      }
+
+      // Handle other errors
       setErrorMessage("Failed to add item to cart");
       setShowErrorToast(true);
 
@@ -118,7 +157,21 @@ const ProductDetails = () => {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 20}
     >
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        alwaysBounceVertical={true} // ✅ REQUIRED for iOS
+        refreshControl={
+          <RefreshControl
+            refreshing={isFetching}
+            onRefresh={() => {
+              refetch(); // 🔄 product
+              setRefreshKey((k) => k + 1); // 🔄 feedback
+            }}
+            colors={["#160b0bff"]} // Android
+            tintColor="#0e0606ff" // iOS
+          />
+        }
+      >
         <View style={styles.container}>
           <View style={styles.galleryContainer}>
             <FlatList
@@ -147,13 +200,19 @@ const ProductDetails = () => {
 
           {/* Product Details Section */}
           <View style={styles.detailsContainer}>
-            <Text style={styles.title}>{product.name}</Text>
-            <RatingStars rating={Number(product.rating) || 0} />
+            <View style={styles.ratingContainer}>
+              <Text style={styles.title}>{product.name}</Text>
+              <View style={styles.ratingRow}>
+                <RatingStars rating={rating} />
+                <Text style={styles.ratingValue}>
+                  {hasReviews ? reviewsData.average.toFixed(1) : "N/A"}
+                </Text>
+              </View>
+            </View>
             <Text style={styles.price}>Nrs {product.price}</Text>
             <Text style={styles.seller}>
-              Seller: {product.seller?.name || "N/A"}
+              Seller: {product.seller?.firstName || "N/A"}
             </Text>
-            <Text style={styles.description}>{product.description}</Text>
 
             <View style={styles.quantityRow}>
               <TouchableOpacity
@@ -234,9 +293,17 @@ const ProductDetails = () => {
 
           {/* Tab Content Section */}
           {activeTab === "description" ? (
-            <Text style={styles.tabContent}>{product.description}</Text>
+            <View style={styles.descriptionTabBox}>
+              <Text style={styles.descriptionTabText}>
+                {product.description || "No description available."}
+              </Text>
+            </View>
           ) : (
-            <CustomerFeedbackContainer type="product" id={product.id} />
+            <CustomerFeedbackContainer
+              type="product"
+              id={product.id}
+              refreshKey={refreshKey}
+            />
           )}
         </View>
       </ScrollView>
@@ -284,10 +351,28 @@ const styles = StyleSheet.create({
   detailsContainer: {
     paddingHorizontal: 12,
   },
+  ratingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  ratingValue: {
+    marginLeft: 6,
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#333",
+  },
   title: {
     fontSize: 22,
     fontWeight: "600",
-    marginBottom: 8,
+    flex: 1,
+    marginRight: 10,
   },
   price: {
     fontSize: 20,
@@ -299,11 +384,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#444",
     marginBottom: 8,
-  },
-  description: {
-    fontSize: 14,
-    color: "#555",
-    marginBottom: 16,
   },
   quantityRow: {
     flexDirection: "row",
@@ -335,7 +415,7 @@ const styles = StyleSheet.create({
   },
   addButton: {
     backgroundColor: "#007AFF",
-    padding: 16,
+    padding: 12,
     borderRadius: 6,
     alignItems: "center",
     marginBottom: 16,
@@ -379,10 +459,19 @@ const styles = StyleSheet.create({
   tabInactiveText: {
     color: "#888",
   },
-  tabContent: {
-    padding: 12,
-    fontSize: 14,
-    color: "#444",
+  descriptionTabBox: {
+    backgroundColor: "#F9FAFB",
+    margin: 12,
+    padding: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  descriptionTabText: {
+    fontSize: 15,
+    textAlign: "center",
+    color: "#374151",
+    lineHeight: 24,
   },
   toast: {
     position: "absolute",

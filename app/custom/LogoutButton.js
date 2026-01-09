@@ -1,41 +1,76 @@
-import { TouchableOpacity, Text, StyleSheet } from "react-native";
+import { TouchableOpacity, Text, StyleSheet, Alert } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
+import { LinearGradient } from "expo-linear-gradient";
+import { fontNames } from "../config/font";
 
 const LogoutButton = ({ setDropdownOpen }) => {
   const { logout } = useAuth();
   const navigation = useNavigation();
 
-  const handleLogout = async () => {
-    await logout();
-    setDropdownOpen?.(false); // optional chaining if not provided
-    navigation.navigate("Auth", { screen: "Login" });
+  const handleLogout = () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            await logout();
+            setDropdownOpen?.(false);
+            navigation.navigate("Auth", { screen: "Login" });
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   return (
-    <TouchableOpacity style={styles.button} onPress={handleLogout}>
-      <FontAwesome name="sign-out" size={18} color="#fff" style={styles.icon} />
-      <Text style={styles.text}>Logout</Text>
+    <TouchableOpacity style={styles.menuItemWrapper} onPress={handleLogout}>
+      <LinearGradient
+        colors={["#C62828", "#E53935"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.menuItem}
+      >
+        <FontAwesome name="sign-out" size={20} color="#fff" />
+        <Text style={styles.menuItemText}>Logout</Text>
+      </LinearGradient>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  button: {
+  menuItemWrapper: {
+    marginBottom: 15,
+    borderRadius: 12,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#e53935",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 6,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
   },
-  icon: {
-    marginRight: 6,
-  },
-  text: {
+  menuItemText: {
+    fontSize: 16,
+    fontFamily: fontNames.nunito.regular,
     color: "#fff",
-    fontWeight: "bold",
+    marginLeft: 15,
+    fontWeight: "600",
   },
 });
 

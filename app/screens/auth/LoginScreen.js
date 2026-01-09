@@ -38,6 +38,7 @@ const LoginScreen = () => {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ flexGrow: 1 }}
       >
+
         <View style={styles.leftSection}>
           <Image
             source={require("../../../assets/T-App-icon.png")}

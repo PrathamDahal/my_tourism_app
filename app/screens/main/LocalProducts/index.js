@@ -16,6 +16,7 @@ import { API_BASE_URL } from "../../../../config";
 import { fontNames } from "../../../config/font";
 import { MaterialIcons } from "@expo/vector-icons";
 import { FontAwesome } from "@expo/vector-icons";
+import CustomBottomTab from "../../../custom/BottomTabComponent";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - 40) / 2; // Calculate width for 2-column grid with padding
@@ -122,81 +123,85 @@ const LocalProducts = ({ navigation }) => {
   const displayedProducts = activeProducts.slice(0, 15);
 
   return (
-    <ScrollView
-      style={styles.container}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={isFetching}
-          onRefresh={refetch}
-          colors={["#C62828"]}
-          tintColor="#C62828"
-        />
-      }
-    >
-      <View style={styles.header}>
-        <View style={styles.leftGroup}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <MaterialIcons name="arrow-back-ios" size={24} color="#fff" />
-          </TouchableOpacity>
-
-          <Text style={styles.headerTitle}>Products</Text>
-        </View>
-
-        <TouchableOpacity style={styles.headerIconButton}>
-          <FontAwesome name="bell" size={20} color="#fff" />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.content}>
-        <Text style={styles.sectionTitle}>Categories</Text>
-
-        <View style={styles.categoriesContainer}>
-          {visibleCategories.map((category) => (
+    <>
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isFetching}
+            onRefresh={refetch}
+            colors={["#C62828"]}
+            tintColor="#C62828"
+          />
+        }
+      >
+        <View style={styles.header}>
+          <View style={styles.leftGroup}>
             <TouchableOpacity
-              key={category.id}
-              style={styles.categoryButton}
-              onPress={() =>
-                navigation.navigate("CategoryProducts", {
-                  slug: category.slug,
-                  categoryName: category.name,
-                })
-              }
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
             >
-              <Text style={styles.categoryButtonText}>{category.name}</Text>
+              <MaterialIcons name="arrow-back-ios" size={24} color="#fff" />
             </TouchableOpacity>
-          ))}
-        </View>
 
-        {shouldShowSeeMore && !showAll && (
-          <TouchableOpacity onPress={() => setShowAll(true)}>
-            <Text style={styles.seeMoreText}>See more...</Text>
+            <Text style={styles.headerTitle}>Products</Text>
+          </View>
+
+          <TouchableOpacity style={styles.headerIconButton}>
+            <FontAwesome name="bell" size={20} color="#fff" />
           </TouchableOpacity>
-        )}
-
-        <Text style={styles.sectionTitle}>Featured Products</Text>
-
-        <View style={styles.productsGrid}>
-          {displayedProducts.length > 0 ? (
-            displayedProducts.map(renderProductCard)
-          ) : (
-            <Text style={styles.noProductsText}>
-              No active products available
-            </Text>
-          )}
         </View>
 
-        <TouchableOpacity
-          style={styles.seeAllButton}
-          onPress={() => navigation.navigate("ProductDisplay")}
-        >
-          <Text style={styles.seeAllButtonText}>See All Products</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+        <View style={styles.content}>
+          <Text style={styles.sectionTitle}>Categories</Text>
+
+          <View style={styles.categoriesContainer}>
+            {visibleCategories.map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={styles.categoryButton}
+                onPress={() =>
+                  navigation.navigate("CategoryProducts", {
+                    slug: category.slug,
+                    categoryName: category.name,
+                  })
+                }
+              >
+                <Text style={styles.categoryButtonText}>{category.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {shouldShowSeeMore && !showAll && (
+            <TouchableOpacity onPress={() => setShowAll(true)}>
+              <Text style={styles.seeMoreText}>See more...</Text>
+            </TouchableOpacity>
+          )}
+
+          <Text style={styles.sectionTitle}>Featured Products</Text>
+
+          <View style={styles.productsGrid}>
+            {displayedProducts.length > 0 ? (
+              displayedProducts.map(renderProductCard)
+            ) : (
+              <Text style={styles.noProductsText}>
+                No active products available
+              </Text>
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={styles.seeAllButton}
+            onPress={() => navigation.navigate("ProductDisplay")}
+          >
+            <Text style={styles.seeAllButtonText}>See All Products</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+      
+      <CustomBottomTab />
+    </>
   );
 };
 
